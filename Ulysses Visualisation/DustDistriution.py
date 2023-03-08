@@ -47,6 +47,7 @@ else:
     start_index = np.argmin(np.abs(time-start_et))
     end_index = np.argmin(np.abs(time-end_et))
 
+
 class CleanedDataPlotter:
 
     def execute(self):
@@ -56,7 +57,7 @@ class CleanedDataPlotter:
     def _remove_999_values(self):
         ulysses_data_without_999 = []
         for i in range(self.start_index, self.end_index):
-            condition = self.data[i,self.rotation_angle_index] != 999 and self.data[i,self.quality_flag_index] >= self.min_quality_flag
+            condition = self.data[i, self.rotation_angle_index] != 999 and self.data[i, self.quality_flag_index] >= self.min_quality_flag
             if condition:
                 ulysses_data_without_999.append(self.data[i])
         self.data_without_999 = np.array(ulysses_data_without_999)
@@ -65,7 +66,7 @@ class CleanedDataPlotter:
         plt.xlabel(self.xlabel)
         plt.ylabel('Count')
         plt.title(self.current_year)
-        plt.hist(self.data_without_999[:,self.plot_index], bins = self.bins)
+        plt.hist(self.data_without_999[:, self.plot_index], bins = self.bins)
         plt.show()
 
     def __init__(self):
@@ -81,10 +82,11 @@ class CleanedDataPlotter:
         self.bins = None
         self.current_year = None
 
+
 LinesPlotter = CleanedDataPlotter()
 LinesPlotter.data = ulysses_data
 LinesPlotter.start_index = start_index
-LinesPlotter.end_index = end_index 
+LinesPlotter.end_index = end_index
 LinesPlotter.min_quality_flag = min_quality_flag
 LinesPlotter.rotation_angle_index = indices['rotation_angle_index']
 LinesPlotter.quality_flag_index = indices['quality_flag_index']
