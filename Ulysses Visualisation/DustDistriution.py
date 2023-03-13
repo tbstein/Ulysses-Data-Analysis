@@ -1,6 +1,7 @@
 #interesting lon and lat for start_index = 2000
 #usually lon = 250 and lat widely distributed
 #velocity centred on 30
+#https://naif.jpl.nasa.gov/pub/naif/
 
 import numpy as np
 import matplotlib.pyplot as plt
