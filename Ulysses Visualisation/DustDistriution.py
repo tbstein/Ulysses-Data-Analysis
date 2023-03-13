@@ -1,7 +1,20 @@
 #interesting lon and lat for start_index = 2000
 #usually lon = 250 and lat widely distributed
 #velocity centred on 30
+
+'''
 #https://naif.jpl.nasa.gov/pub/naif/
+
+# Leap Second Kernel naif0012.tls in generic_kernels/lsk
+spice.furnsh("spice/generic_kernels/naif0012.tls")
+
+# de440.bsp enthält die Bahnen der großen Planeten
+# zu finden in generic_kernels/spk/planets
+spice.furnsh("spice/generic_kernels/de440.bsp")
+
+# Ulysses-Bahndaten, in Ulysses/kernels/spk
+spice.furnsh("spice/ulysses_1990_2009_2050.bsp")
+'''
 
 import numpy as np
 import matplotlib.pyplot as plt
