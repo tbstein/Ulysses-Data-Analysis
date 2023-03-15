@@ -1,21 +1,3 @@
-#interesting lon and lat for start_index = 2000
-#usually lon = 250 and lat widely distributed
-#velocity centred on 30
-
-'''
-#https://naif.jpl.nasa.gov/pub/naif/
-
-# Leap Second Kernel naif0012.tls in generic_kernels/lsk
-spice.furnsh("spice/generic_kernels/naif0012.tls")
-
-# de440.bsp enthält die Bahnen der großen Planeten
-# zu finden in generic_kernels/spk/planets
-spice.furnsh("spice/generic_kernels/de440.bsp")
-
-# Ulysses-Bahndaten, in Ulysses/kernels/spk
-spice.furnsh("spice/ulysses_1990_2009_2050.bsp")
-'''
-
 import numpy as np
 import matplotlib.pyplot as plt
 from indices_dict import indices
@@ -40,7 +22,8 @@ class CleanedDataPlotter:
         plt.xlabel(self.xlabel)
         plt.ylabel('Count')
         plt.title(self.current_year)
-        plt.hist(self.data_without_999[:, self.plot_index], bins = self.bins)
+        plt.scatter(self.data_without_999[:, indices['sector']], self.data_without_999[:, indices['velocity_index']])
+        #plt.hist(self.data_without_999[:, self.plot_index], bins = self.bins)
         plt.show()
 
     def __init__(self):
@@ -59,6 +42,8 @@ class CleanedDataPlotter:
 
 spice_path = '../../spice/'
 spice.furnsh(spice_path + "naif0012.tls")
+spice.furnsh(spice_path + "de440.bsp")
+spice.furnsh(spice_path + "ulysses_1990_2009_2050.bsp")
 one_year_et = spice.str2et('01-001T00:00')-spice.str2et('00-001T00:00')
 
 first_data_column = 3
@@ -83,6 +68,19 @@ with open('Ulysses_Data_File_Cleaned.txt') as cleaned_ulysses_data:
 index = np.array(index)
 
 time = spice.str2et(time)
+dist_array = []
+
+plt.hist(time)
+plt.show()
+
+for et in time:
+    [pos, ltime] = spice.spkpos('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
+    dist = spice.vnorm(pos)
+    dist = spice.convrt(dist, 'KM', 'AU')
+    dist_array.append(dist)
+
+plt.hist(dist_array)
+plt.show()
 
 ulysses_data = np.loadtxt('Ulysses_Data_File_Cleaned.txt', delimiter = ' ', skiprows = indices['first_data_line'], usecols = used_cols)
 
