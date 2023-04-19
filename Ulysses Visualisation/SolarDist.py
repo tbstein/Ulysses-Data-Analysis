@@ -6,9 +6,9 @@ import spiceypy as spice
 
 class CleanedDataPlotter:
 
-    def execute(self):
+    def execute_wehry(self):
         self._remove_999_values()
-        self._plot_hist()
+        self._plot_wehry()
 
     def _remove_999_values(self):
         ulysses_data_without_999 = []
@@ -18,13 +18,34 @@ class CleanedDataPlotter:
                 ulysses_data_without_999.append(self.data[i])
         self.data_without_999 = np.array(ulysses_data_without_999)
 
-    def _plot_hist(self):
-        plt.xlabel(self.xlabel)
-        plt.ylabel('Count')
+    def _plot_wehry(self):
+        plt.xlabel('Sector')
+        plt.ylabel('Velocity')
         plt.title(self.current_year)
         plt.scatter(self.data_without_999[:, indices['sector']], self.data_without_999[:, indices['velocity_index']])
-        #plt.hist(self.data_without_999[:, self.plot_index], bins = self.bins)
+        wehry_velocity = 20
+        wehry_sector = 50
+        plt.plot(self.data_without_999[:, indices['sector']], np.ones(len(self.data_without_999[:, indices['sector']]))*wehry_velocity, color = 'red')
+        plt.plot(np.ones(len(self.data_without_999[:, indices['sector']]))*wehry_sector, self.data_without_999[:, indices['velocity_index']], color = 'red')
         plt.show()
+        
+        beta_meteoroids = []
+        for i in range(len(self.data_without_999)):
+            condition = self.data_without_999[i, indices['sector']] <= wehry_sector and self.data_without_999[i, indices['velocity_index']] >= wehry_velocity
+            if condition:
+                beta_meteoroids.append(i)
+        
+        beta_dist = []
+        for i in range(len(self.dist)):
+            if i in beta_meteoroids:
+                beta_dist.append(self.dist[i])
+        
+        plt.xlabel('Distance')
+        plt.ylabel('Count')
+        plt.title(r'$\beta$ meteoroids')
+        
+        plt.hist(beta_dist)
+        print(len(beta_dist))
 
     def __init__(self):
         self.data = None
@@ -38,6 +59,7 @@ class CleanedDataPlotter:
         self.plot_index = None
         self.bins = None
         self.current_year = None
+        self.dist = None
 
 
 spice_path = '../../spice/'
@@ -50,7 +72,7 @@ first_data_column = 3
 last_data_column = 34
 
 min_quality_flag = 2
-all_lines = True
+all_lines = False
 bins = 10
 PlottedQuantity = 'LAT'
 
@@ -70,17 +92,11 @@ index = np.array(index)
 time = spice.str2et(time)
 dist_array = []
 
-plt.hist(time)
-plt.show()
-
 for et in time:
     [pos, ltime] = spice.spkpos('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
     dist = spice.vnorm(pos)
     dist = spice.convrt(dist, 'KM', 'AU')
     dist_array.append(dist)
-
-plt.hist(dist_array)
-plt.show()
 
 ulysses_data = np.loadtxt('Ulysses_Data_File_Cleaned.txt', delimiter = ' ', skiprows = indices['first_data_line'], usecols = used_cols)
 
@@ -106,6 +122,7 @@ LinesPlotter.quality_flag_index = indices['quality_flag_index']
 LinesPlotter.xlabel = PlottedQuantity
 LinesPlotter.plot_index = indices[PlottedQuantity]
 LinesPlotter.bins = bins
+LinesPlotter.dist = dist_array
 
 i = 1990
 while True:
@@ -113,9 +130,12 @@ while True:
         LinesPlotter.current_year = i
     if LinesPlotter.end_index == len(ulysses_data)-1:
         break
-    LinesPlotter.execute()
-    start_et = end_et
-    end_et = end_et+one_year_et
-    LinesPlotter.start_index = np.argmin(np.abs(time-start_et))
-    LinesPlotter.end_index = np.argmin(np.abs(time-end_et))
-    i += 1
+    LinesPlotter.execute_wehry()
+    if not all_lines:
+        start_et = end_et
+        end_et = end_et+one_year_et
+        LinesPlotter.start_index = np.argmin(np.abs(time-start_et))
+        LinesPlotter.end_index = np.argmin(np.abs(time-end_et))
+        i += 1
+    if all_lines:
+        break

@@ -116,8 +116,11 @@ while True:
     if LinesPlotter.end_index == len(ulysses_data)-1:
         break
     LinesPlotter.execute()
-    start_et = end_et
-    end_et = end_et+one_year_et
-    LinesPlotter.start_index = np.argmin(np.abs(time-start_et))
-    LinesPlotter.end_index = np.argmin(np.abs(time-end_et))
-    i += 1
+    if not all_lines:
+        start_et = end_et
+        end_et = end_et+one_year_et
+        LinesPlotter.start_index = np.argmin(np.abs(time-start_et))
+        LinesPlotter.end_index = np.argmin(np.abs(time-end_et))
+        i += 1
+    if all_lines:
+        break
