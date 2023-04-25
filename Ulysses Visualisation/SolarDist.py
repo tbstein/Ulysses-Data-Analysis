@@ -4,6 +4,7 @@ from indices_dict import indices
 import spiceypy as spice
 
 
+
 class CleanedDataPlotter:
 
     def execute_wehry(self):
