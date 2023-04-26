@@ -31,22 +31,72 @@ class CleanedDataPlotter:
         plt.show()
         
         beta_meteoroids = []
-        for i in range(len(self.data_without_999)):
-            condition = self.data_without_999[i, indices['sector']] <= wehry_sector and self.data_without_999[i, indices['velocity_index']] >= wehry_velocity
+        for i in range(len(self.data)):
+            condition = self.data[i, indices['sector']] <= wehry_sector and self.data[i, indices['velocity_index']] >= wehry_velocity
             if condition:
                 beta_meteoroids.append(i)
         
+        data, eff_area_time = self._effective_area()
+        
+        for i in range(1,21):
+            new_data, beta_dist = self._correct_by_effective_area(beta_meteoroids, data, eff_area_time, min_eff_area=0.01*i/10)
+            
+            plt.xlabel('Distance [au]')
+            plt.ylabel('Count')
+            plt.title('Minimum effective area = ' + str(0.01*i/10) + r'm$^2$')
+            
+            #plt.hist(beta_dist, weights = weights)
+            plt.hist(beta_dist)
+            plt.show()
+            #print(sum(weights))
+
+    def _effective_area(self):
+        data = np.loadtxt('DefaultDataset.csv', delimiter = ',')
+        plt.plot(data[:,0], data[:,1], label = 'Wehry')
+        plt.xlabel('Year')
+        plt.ylabel('Effective Area [m$^2$]')
+        year_time = self.data_without_999[:,time_index]/one_year_et+2000
+        trig_term = np.abs(np.cos(self.data_without_999[:,self.rotation_angle_index]/360*2*np.pi))
+        mov_avg = []
+        ma_n = 10
+        for i in range(len(trig_term)):
+            if i < ma_n:
+                mov_avg.append(sum(trig_term[:i+ma_n])/(ma_n+i))
+            elif i > len(trig_term)-ma_n:
+                mov_avg.append(sum(trig_term[i-ma_n:])/(2*ma_n-i))
+            else:
+                mov_avg.append(sum(trig_term[i-ma_n:i+ma_n])/(2*ma_n))
+        plt.plot(year_time, np.array(mov_avg)*max_area, label = 'Own estimate')
+        plt.legend()
+        plt.show()
+        eff_area_time = []
+        for i in data[:,0]:        
+            eff_area_time.append(spice.str2et(str(i)[:4]+'-01-001T00:00')+float(str(i)[4:])*one_year_et)
+        eff_area_time = np.array(eff_area_time)
+        return data, eff_area_time
+
+    def _correct_by_effective_area(self, beta_meteoroids, data, eff_area_time, min_eff_area = 0.01):
+        
+        #weights = []     
+        #for i in range(len(self.data_without_999)):
+        #    if i in beta_meteoroids:
+        #        closest_eff_area_idx = find_nearest_idx(eff_area_time, self.data_without_999[i,time_index])
+        #        weights.append(data[closest_eff_area_idx,1]/max_area)
+        #weights = np.array(weights)
+        #return weights
+        
+        new_data = []
         beta_dist = []
-        for i in range(len(self.dist)):
+        for i in range(len(self.data)):
             if i in beta_meteoroids:
-                beta_dist.append(self.dist[i])
-        
-        plt.xlabel('Distance')
-        plt.ylabel('Count')
-        plt.title(r'$\beta$ meteoroids')
-        
-        plt.hist(beta_dist)
-        print(len(beta_dist))
+                closest_eff_area_idx = find_nearest_idx(eff_area_time, self.data[i,time_index])
+                if data[closest_eff_area_idx,1] > min_eff_area:
+                    new_data.append(self.data[i])
+                    beta_dist.append(self.dist[i])
+        new_data = np.array(new_data)
+        beta_dist = np.array(beta_dist)
+        return new_data, beta_dist
+            
 
     def __init__(self):
         self.data = None
@@ -62,6 +112,14 @@ class CleanedDataPlotter:
         self.current_year = None
         self.dist = None
 
+#https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
+def find_nearest_idx(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
+
+max_area = 0.1
+time_index = 0
 
 spice_path = '../../spice/'
 spice.furnsh(spice_path + "naif0012.tls")
@@ -73,7 +131,7 @@ first_data_column = 3
 last_data_column = 34
 
 min_quality_flag = 2
-all_lines = False
+all_lines = True
 bins = 10
 PlottedQuantity = 'LAT'
 
