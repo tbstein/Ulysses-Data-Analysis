@@ -118,7 +118,7 @@ def find_nearest_idx(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
-max_area = 0.1
+max_area = 1000
 time_index = 0
 
 spice_path = '../../spice/'
