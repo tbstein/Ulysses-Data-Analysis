@@ -20,6 +20,7 @@ class CleanedDataPlotter:
         self.data_without_999 = np.array(ulysses_data_without_999)
 
     def _plot_wehry(self):
+        """
         plt.xlabel('Sector')
         plt.ylabel('Velocity')
         plt.title(self.current_year)
@@ -35,15 +36,34 @@ class CleanedDataPlotter:
             condition = self.data[i, indices['sector']] <= wehry_sector and self.data[i, indices['velocity_index']] >= wehry_velocity
             if condition:
                 beta_meteoroids.append(i)
+        """
+        
+        plt.xlabel('Angle [°]')
+        plt.ylabel('Velocity [km/s]')
+        plt.title(self.current_year)
+        
+        
+        velocities = self.data_without_999[:, indices['velocity_index']]
+        
+        plt.scatter(angles, velocities)
+        wehry_velocity = 20
+        wehry_angle = 50
+        
+        
+        
+        
+        
+        
+        
         
         data, eff_area_time = self._effective_area()
         
-        for i in range(1,21):
-            new_data, beta_dist = self._correct_by_effective_area(beta_meteoroids, data, eff_area_time, min_eff_area=0.01*i/10)
+        for i in range(10,11):
+            new_data, beta_dist = self._correct_by_effective_area(beta_meteoroids, data, eff_area_time, min_eff_area=100*i/10)
             
             plt.xlabel('Distance [au]')
             plt.ylabel('Count')
-            plt.title('Minimum effective area = ' + str(0.01*i/10) + r'm$^2$')
+            plt.title('Minimum effective area = ' + str(100*i/10) + r'cm$^2$')
             
             #plt.hist(beta_dist, weights = weights)
             plt.hist(beta_dist)
@@ -51,22 +71,10 @@ class CleanedDataPlotter:
             #print(sum(weights))
 
     def _effective_area(self):
-        data = np.loadtxt('DefaultDataset.csv', delimiter = ',')
-        plt.plot(data[:,0], data[:,1], label = 'Wehry')
+        data = np.loadtxt('70.dat', delimiter = ',')
+        plt.plot(data[:,0], data[:,1], label = '70km/s')
         plt.xlabel('Year')
-        plt.ylabel('Effective Area [m$^2$]')
-        year_time = self.data_without_999[:,time_index]/one_year_et+2000
-        trig_term = np.abs(np.cos(self.data_without_999[:,self.rotation_angle_index]/360*2*np.pi))
-        mov_avg = []
-        ma_n = 10
-        for i in range(len(trig_term)):
-            if i < ma_n:
-                mov_avg.append(sum(trig_term[:i+ma_n])/(ma_n+i))
-            elif i > len(trig_term)-ma_n:
-                mov_avg.append(sum(trig_term[i-ma_n:])/(2*ma_n-i))
-            else:
-                mov_avg.append(sum(trig_term[i-ma_n:i+ma_n])/(2*ma_n))
-        plt.plot(year_time, np.array(mov_avg)*max_area, label = 'Own estimate')
+        plt.ylabel('Effective Area [cm$^2$]')
         plt.legend()
         plt.show()
         eff_area_time = []
@@ -75,7 +83,7 @@ class CleanedDataPlotter:
         eff_area_time = np.array(eff_area_time)
         return data, eff_area_time
 
-    def _correct_by_effective_area(self, beta_meteoroids, data, eff_area_time, min_eff_area = 0.01):
+    def _correct_by_effective_area(self, beta_meteoroids, data, eff_area_time, min_eff_area = 100):
         
         #weights = []     
         #for i in range(len(self.data_without_999)):

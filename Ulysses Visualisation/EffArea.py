@@ -17,30 +17,7 @@ num = 10000
 time = np.linspace(start_et, end_et, num=num)
 
 max_area = 1000
-extra_angle = 85
-
-
-angle = []
-for et in time:
-    [stateSun, ltime] = spice.spkezr('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
-    [stateEarth, ltime] = spice.spkezr('EARTH',  et,      'J2000', 'NONE', 'ULYSSES')
-    velSun = stateSun[3:]
-    posEarth = stateEarth[:3]
-    posSun = stateSun[:3]
-    dustVel = 70*posSun/(np.linalg.norm(posSun))
-    angle.append(spice.vsep(velSun+dustVel, posEarth))
-
-angle = np.array(angle)
-
-pltangle = angle*360/(2*np.pi)
-plttime = time/one_year_et+2000
-
-plt.title('Angle between Earth-Ulysses Position Vector and Sun-Ulysses Velocity Vector + 70km/s from Sun direction')
-plt.ylabel('Angle (°)')
-plt.xlabel('Time')
-plt.plot(plttime, pltangle)
-plt.show()
-
+extra_angle = 95
 
 sensitivityRAW = np.loadtxt('sensitivity_function.txt', delimiter=',')
 sensitivity_angle = np.concatenate((-np.flip(sensitivityRAW[1:,0]),sensitivityRAW[:,0]))
@@ -90,11 +67,44 @@ plt.title('Convolved sensitivity function')
 plt.plot(conv_plt_angle+extra_angle, convolution)
 plt.show()
 
-eff_area = []
-for i in range(len(pltangle)):
-    index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
-    eff_area.append(convolution[index])
 
-plt.xlabel('Time')
-plt.ylabel(r'Effective area [cm$^2$]')
-plt.plot(plttime, eff_area)
+velocity_dust = 20
+for i in range(6):
+
+    velocity_dust = 20+10*i
+    
+    angle = []
+    for et in time:
+        [stateSun, ltime] = spice.spkezr('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
+        [stateEarth, ltime] = spice.spkezr('EARTH',  et,      'J2000', 'NONE', 'ULYSSES')
+        velSun = stateSun[3:]
+        posEarth = stateEarth[:3]
+        posSun = stateSun[:3]
+        dustVel = velocity_dust*posSun/(np.linalg.norm(posSun))
+        angle.append(spice.vsep(velSun+dustVel, posEarth))
+    
+    angle = np.array(angle)
+    
+    pltangle = angle*360/(2*np.pi)
+    plttime = time/one_year_et+2000
+    
+    plt.title('Angle between Earth-Ulysses Position Vector and Sun-Ulysses Velocity Vector + ' + str(velocity_dust) + 'km/s from Sun direction')
+    plt.ylabel('Angle [°]')
+    plt.xlabel('Time')
+    plt.plot(plttime, pltangle)
+    plt.show()
+    
+    eff_area = []
+    for i in range(len(pltangle)):
+        index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
+        eff_area.append(convolution[index])
+
+    plt.title(str(velocity_dust) + 'km/s')
+    plt.xlabel('Time')
+    plt.ylabel(r'Effective area [cm$^2$]')
+    plt.plot(plttime, eff_area)
+    plt.show()
+    
+    with open(str(velocity_dust)+'.dat', 'w') as f:
+        for i in range(len(eff_area)):
+            f.write(str(plttime[i]) + ', ' + str(eff_area[i]) + '\n')

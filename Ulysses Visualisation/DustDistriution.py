@@ -67,7 +67,7 @@ last_data_column = 34
 min_quality_flag = 2
 all_lines = True
 bins = 10
-PlottedQuantity = 'LAT'
+PlottedQuantity = 'LON'
 
 used_cols = (i for i in range(first_data_column, last_data_column))
 
