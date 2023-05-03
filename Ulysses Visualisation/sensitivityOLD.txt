@@ -1,4 +1,4 @@
-Hier noch das Detektorprofil von Ulysses ohne Wandeinschläge. Der erste Wert ist für senkrechten Einfall 1000cm^2, also 0 Grad zur Achse, danach in Schritten von 1 Grad zur Sensorachse.
+testHier noch das Detektorprofil von Ulysses ohne Wandeinschläge. Der erste Wert ist für senkrechten Einfall 1000cm^2, also 0 Grad zur Achse, danach in Schritten von 1 Grad zur Sensorachse.
 
     sens = [1000.00,998.06,992.24,978.10,966.36,956.14,947.42,935.78, $
          919.47,906.49,896.81,886.01,870.63,860.31,848.03,836.45,820.38, $
