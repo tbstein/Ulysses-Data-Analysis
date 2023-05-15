@@ -76,7 +76,7 @@ for i in range(6):
     angle = []
     for et in time:
         [stateSun, ltime] = spice.spkezr('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
-        [stateEarth, ltime] = spice.spkezr('EARTH',  et,      'J2000', 'NONE', 'ULYSSES')
+        [stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'J2000', 'NONE', 'ULYSSES')
         velSun = stateSun[3:]
         posEarth = stateEarth[:3]
         posSun = stateSun[:3]
