@@ -9,10 +9,14 @@ class CleanedDataPlotter:
     def execute_wehry(self):
         self._set_beta_parameters()
         self._remove_999_values()
-        self._set_detector_sun_angles()
-        self._plot_wehry()
+        self._set_angles_and_velocities()
+        self._plot_wehry(self._detector_sun_angles, self._velocities)
+        self._choose_beta_meteoroids()
+        self._plot_wehry(self._beta_angles, self._beta_vel)
         self._effective_area()
-        self._plot_for_minimum_effective_area()
+        self._plot_minimum_effective_area_hist()
+        self._set_new_angles_and_velocities()
+        self._plot_wehry(self._new_detector_sun_angles, self._new_velocities)
         self._plot_lat()
         self._calculate_zero_crossings_times()
         self._effective_area_with_lat()
@@ -39,8 +43,9 @@ class CleanedDataPlotter:
                 ulysses_data_without_999.append(self.data[i])
         self.data_without_999 = np.array(ulysses_data_without_999)
 
-    def _set_detector_sun_angles(self):
+    def _set_angles_and_velocities(self):
         self._detector_sun_angles = self._calculate_angle_between_two_objects(self.data_without_999)
+        self._velocities = self.data_without_999[:, indices['velocity_index']]
 
     def _calculate_angle_between_two_objects(self, data: list, target: str = 'SUN', observer: str = 'ULYSSES') -> list:
         lon = data[:, indices['solar_lon_index']]
@@ -54,37 +59,13 @@ class CleanedDataPlotter:
             detector_sun_angles.append(spice.vsep(posDetector, posSun)*360/(2*np.pi))
         return detector_sun_angles
 
-    def _plot_wehry(self):       
+    def _plot_wehry(self, angles: list, velocities: list):       
         plt.xlabel('Angle between detector axis and sun [°]')
         plt.ylabel('Relative Velocity [km/s]')
-        plt.title(self.current_year)
-        
-        
-        self._velocities = self.data_without_999[:, indices['velocity_index']]
-            
-        plt.scatter(self._detector_sun_angles, self._velocities)
+        plt.title(self.current_year)           
+        plt.scatter(angles,velocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
-        plt.show() 
-        
-
-
-        self._choose_beta_meteoroids()
-        
-        
-         
-        plt_angles = []
-        plt_vel = []
-        for i in range(len(self._beta_meteoroids)):
-            if self._beta_meteoroids[i]:
-                plt_angles.append(self._detector_sun_angles[i])
-                plt_vel.append(self._velocities[i])
-        
-        plt.scatter(plt_angles, plt_vel)
-        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
-        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
-        plt.xlabel('Angle between detector axis and sun [°]')
-        plt.ylabel('Relative Velocity [km/s]')
         plt.show() 
 
     def _choose_beta_meteoroids(self) -> list:
@@ -106,6 +87,8 @@ class CleanedDataPlotter:
         et = self.data_without_999[:, self._time_index]
         
         beta_meteoroids = []
+        beta_angles = []
+        beta_vel = []
         for i, data in  enumerate(self.data_without_999):
             condition_wehry = self._detector_sun_angles[i] <= self._wehry_angle and self._velocities[i] >= self._wehry_velocity
             condition_not_interstellar_angle = lon[i] < self._interstellar_ecliptic_lon-self._tolerance or lon[i] > self._interstellar_ecliptic_lon+self._tolerance or lat[i] < self._interstellar_ecliptic_lat-self._tolerance or lat[i] > self._interstellar_ecliptic_lat+self._tolerance
@@ -122,11 +105,15 @@ class CleanedDataPlotter:
             #condition_not_interstellar = True
             condition = condition_wehry and condition_not_streams and condition_not_interstellar
             if condition:
-                beta_meteoroids.append(True)  
+                beta_meteoroids.append(True)
+                beta_angles.append(self._detector_sun_angles[i])
+                beta_vel.append(self._velocities[i])
             else:
                 beta_meteoroids.append(False)
         
         self._beta_meteoroids = beta_meteoroids
+        self._beta_angles = beta_angles
+        self._beta_vel = beta_vel
 
     def _effective_area(self) -> (list, list):
         wehry = np.loadtxt('DefaultDataset.csv', delimiter = ',')
@@ -147,7 +134,7 @@ class CleanedDataPlotter:
         self._eff_area_data = eff_area_data
         self.eff_area_time = eff_area_time
 
-    def _plot_for_minimum_effective_area(self):
+    def _plot_minimum_effective_area_hist(self):
 
         for i in range(1,2):
             self._correct_by_effective_area(min_eff_area=self.min_eff_area_factor*i)
@@ -161,16 +148,6 @@ class CleanedDataPlotter:
             print(len(self._beta_dist), 'beta meteoroids found')
 
         #Seems like 200cm2 is pretty good
-
-
-        detector_sun_angles1 = self._calculate_angle_between_two_objects(self._new_data)
-
-        plt.scatter(detector_sun_angles1, self._new_data[:, indices['velocity_index']])
-        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
-        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
-        plt.xlabel('Angle between detector axis and sun [°]')
-        plt.ylabel('Relative Velocity [km/s]')
-        plt.show() 
 
     def _correct_by_effective_area(self, min_eff_area: float = 200):
         new_data = []
@@ -193,6 +170,10 @@ class CleanedDataPlotter:
         self._new_data = new_data
         self._beta_dist = beta_dist
         self._eff_area_res = eff_area_res
+        
+    def _set_new_angles_and_velocities(self):
+        self._new_detector_sun_angles = self._calculate_angle_between_two_objects(self._new_data)
+        self._new_velocities = self._new_data[:, indices['velocity_index']]
 
     def _plot_lat(self):
         plt.scatter(self._new_data[:, self._time_index]/self.one_year_et+2000, self._new_data[:,indices['LAT']], label = 'beta', marker = 'x')
@@ -242,7 +223,7 @@ class CleanedDataPlotter:
         plt.legend()
         plt.show()
     
-    def _count_and_print_north_fraction(self,):
+    def _count_and_print_north_fraction(self):
         count0 = 0
         count999 = 0
         countbeta = 0

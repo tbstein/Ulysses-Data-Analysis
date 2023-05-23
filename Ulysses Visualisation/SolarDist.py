@@ -77,10 +77,13 @@ while True:
         LinesPlotter.current_year = i
     if LinesPlotter.end_index == len(ulysses_data)-1:
         break
-    try:
+    if all_lines:
         LinesPlotter.execute_wehry()
-    except:
-        print('No beta meteoroids found in', i)
+    else:
+        try:
+            LinesPlotter.execute_wehry()
+        except:
+            print('No beta meteoroids found in', i)
     if not all_lines:
         start_et = end_et
         end_et = end_et+one_year_et
