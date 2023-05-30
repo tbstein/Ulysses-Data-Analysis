@@ -1,6 +1,9 @@
+# %%
+
 import numpy as np
 import matplotlib.pyplot as plt
 import spiceypy as spice
+from MiscFunctions import find_nearest_idx
 
 #Units of spice are km and km/s
 
@@ -15,6 +18,7 @@ end_et = spice.str2et('07-334T08:17')
 
 num = 10000
 time = np.linspace(start_et, end_et, num=num)
+delta_t = (end_et-start_et)/num
 
 max_area = 1000
 extra_angle = 95
@@ -33,12 +37,6 @@ plt.xlabel('Angle [°]')
 plt.title('Sensitivity function')
 plt.plot(sensitivity[0,:], sensitivity[1,:])
 plt.show()
-
-#https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array
-def find_nearest_idx(array, value):
-    array = np.asarray(array)
-    idx = (np.abs(array - value)).argmin()
-    return idx
 
 #Takes angles in degrees, not radians
 def uniform(angle, interval = (-30,30)):
@@ -67,6 +65,7 @@ plt.title('Convolved sensitivity function')
 plt.plot(conv_plt_angle+extra_angle, convolution)
 plt.show()
 
+wehry = np.loadtxt('DefaultDataset.csv', delimiter = ',')
 
 velocity_dust = 20
 for i in range(6):
@@ -74,6 +73,7 @@ for i in range(6):
     velocity_dust = 20+10*i
     
     angle = []
+    factor = []
     for et in time:
         [stateSun, ltime] = spice.spkezr('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
         [stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'J2000', 'NONE', 'ULYSSES')
@@ -81,7 +81,11 @@ for i in range(6):
         posEarth = stateEarth[:3]
         posSun = stateSun[:3]
         dustVel = velocity_dust*posSun/(np.linalg.norm(posSun))
+        relVel = velSun-dustVel
+        factor.append(np.abs(np.linalg.norm(relVel)/np.linalg.norm(dustVel)))
         angle.append(spice.vsep(velSun+dustVel, posEarth))
+        
+    factor = np.array(factor)
     
     angle = np.array(angle)
     
@@ -98,13 +102,19 @@ for i in range(6):
     for i in range(len(pltangle)):
         index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
         eff_area.append(convolution[index])
+    eff_area = np.array(eff_area)*factor
 
     plt.title(str(velocity_dust) + 'km/s')
     plt.xlabel('Time')
     plt.ylabel(r'Effective area [cm$^2$]')
-    plt.plot(plttime, eff_area)
+    plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red')
+    plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue')
+    plt.legend()
     plt.show()
     
     with open(str(velocity_dust)+'.dat', 'w') as f:
         for i in range(len(eff_area)):
             f.write(str(plttime[i]) + ', ' + str(eff_area[i]) + '\n')
+    
+    plt.plot(plttime, factor)
+    plt.show()

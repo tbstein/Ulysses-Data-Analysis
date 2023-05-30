@@ -116,16 +116,13 @@ class CleanedDataPlotter:
         self._beta_vel = beta_vel
 
     def _effective_area(self) -> (list, list):
-        wehry = np.loadtxt('DefaultDataset.csv', delimiter = ',')
-        plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue')
         eff_area_data = np.loadtxt(self.eff_area_file, delimiter = ',')
         if self.eff_area_file == 'DefaultDataset.csv':
             eff_area_data[:,1] = eff_area_data[:,1]*10000
-        plt.plot(eff_area_data[:,0], eff_area_data[:,1], label = 'Own estimate', color = 'red')
+        plt.plot(eff_area_data[:,0], eff_area_data[:,1])
         plt.xlabel('Year')
         plt.ylabel('Effective Area [cm$^2$]')
         plt.title(self.eff_area_file[:2]+'km/s')
-        plt.legend()
         plt.show()
         eff_area_time = []
         for i in eff_area_data[:,0]:        
