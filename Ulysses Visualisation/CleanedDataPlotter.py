@@ -6,6 +6,36 @@ from MiscFunctions import find_nearest_idx
 
 class CleanedDataPlotter:
 
+    def execute_wehry_special(self):
+        self._set_beta_parameters()
+        
+        self._detector_sun_angles = self._calculate_angle_between_two_objects(self.data)
+        self._velocities = self.data[:, indices['velocity_index']]
+        
+        self._plot_wehry(self._detector_sun_angles, self._velocities)
+        self._effective_area()
+        
+        new_data = []
+        beta_dist = []
+        eff_area_res = []
+        for i in range(len(self.data)):
+            closest_eff_area_idx = find_nearest_idx(self.eff_area_time, self.data[i, self._time_index])
+            eff_area_res.append(self._eff_area_data[closest_eff_area_idx,1])
+            new_data.append(self.data[i])
+            beta_dist.append(self.data[i,self._dist_index])  
+        beta_dist = np.array(beta_dist)
+        new_data = np.array(new_data)
+        eff_area_res = np.array(eff_area_res)
+        self._new_data = new_data
+        self._beta_dist = beta_dist
+        self._eff_area_res = eff_area_res
+        
+        self._new_data = self.data
+        self.data = self.raw_data
+        
+        self._calculate_zero_crossings_times()
+        self._plot_flux()
+    
     def execute_wehry(self):
         self._set_beta_parameters()
         self._remove_999_values()
@@ -14,13 +44,15 @@ class CleanedDataPlotter:
         self._choose_beta_meteoroids()
         self._plot_wehry(self._beta_angles, self._beta_vel)
         self._effective_area()
-        self._plot_minimum_effective_area_hist()
+        self._minimum_effective_area_hist()
         self._set_new_angles_and_velocities()
         self._plot_wehry(self._new_detector_sun_angles, self._new_velocities)
+        self._compare_found_betas()
         self._plot_lat()
         self._calculate_zero_crossings_times()
-        self._effective_area_with_lat()
+        self._plot_effective_area_with_lat()
         self._count_and_print_north_fraction()
+        self._plot_effective_area_with_streams()
         self._plot_flux()
 
     def _set_beta_parameters(self):
@@ -34,6 +66,7 @@ class CleanedDataPlotter:
         self._tolerance = 30
         self._interstellar_min_vel = 14
         self._interstellar_min_mass = 2.5e-14
+        self._wehry_beta_particle_indices = [4,6,8,18,19,29,31,34,35,36,38,43,48,49,59,61,66,72,74,76,80,83,86,94,1032,1080,1145,1165,1410,1412,1421,1422,1427,1428,1429,1431,1433,1436,1438,1440,1442,1449,1450,1452,1455,1465,1984,2001,2003,2010,2012,2024,2034,2035,2048,2049,2051,2052,2053,2054,2055,2060]
 
     def _remove_999_values(self):
         ulysses_data_without_999 = []
@@ -131,7 +164,7 @@ class CleanedDataPlotter:
         self._eff_area_data = eff_area_data
         self.eff_area_time = eff_area_time
 
-    def _plot_minimum_effective_area_hist(self):
+    def _minimum_effective_area_hist(self):
 
         for i in range(1,2):
             self._correct_by_effective_area(min_eff_area=self.min_eff_area_factor*i)
@@ -171,6 +204,17 @@ class CleanedDataPlotter:
     def _set_new_angles_and_velocities(self):
         self._new_detector_sun_angles = self._calculate_angle_between_two_objects(self._new_data)
         self._new_velocities = self._new_data[:, indices['velocity_index']]
+        
+    def _compare_found_betas(self):
+        print('Found beta indices:', self._new_data[:, self._index_index])
+        print(len(self._new_data[:,0]),'beta particles found')
+        print('Wehry beta indices:', self._wehry_beta_particle_indices)
+        print(len(self._wehry_beta_particle_indices),'beta particles found')
+        my_indices = np.array(self._new_data[:, self._index_index])
+        wehry_indices = np.array(self._wehry_beta_particle_indices)
+        intersect_indices = np.intersect1d(my_indices, wehry_indices)
+        print('Intersection beta indices:', intersect_indices)
+        print(len(intersect_indices),'beta particles found')
 
     def _plot_lat(self):
         plt.scatter(self._new_data[:, self._time_index]/self.one_year_et+2000, self._new_data[:,indices['LAT']], label = 'beta', marker = 'x')
@@ -188,14 +232,14 @@ class CleanedDataPlotter:
         print('Latitude = 0 at', zero_crossings_times/self.one_year_et+2000)
         self._zero_crossings_times = zero_crossings_times
         
-    def _effective_area_with_lat(self):
+    def _plot_effective_area_with_lat(self):
         zero_crossings_times_in_epoch = self._zero_crossings_times/self.one_year_et+2000
-        data = np.loadtxt(self.eff_area_file, delimiter = ',')
+        eff_area_data = np.loadtxt(self.eff_area_file, delimiter = ',')
         if self.eff_area_file == 'DefaultDataset.csv':
-            data[:,1] = data[:,1]*10000
-        cond = np.where(data[:,0] < zero_crossings_times_in_epoch[0])
+            eff_area_data[:,1] = eff_area_data[:,1]*10000
+        cond = np.where(eff_area_data[:,0] < zero_crossings_times_in_epoch[0])
         cond = np.intersect1d(cond, cond)
-        plt.plot(data[cond,0], data[cond,1], label = 'Pre-Jupiter fly-by', color = 'black')
+        plt.plot(eff_area_data[cond,0], eff_area_data[cond,1], label = 'Pre-Jupiter fly-by', color = 'black')
         for i in range(len(zero_crossings_times_in_epoch)-1):
             if i == 0:
                 label = 'South'
@@ -207,18 +251,19 @@ class CleanedDataPlotter:
                 color = 'blue'
             else:
                 color = 'red'
-            cond0 = np.where(data[:,0] > zero_crossings_times_in_epoch[i])
-            cond1 = np.where(data[:,0] < zero_crossings_times_in_epoch[i+1])
+            cond0 = np.where(eff_area_data[:,0] > zero_crossings_times_in_epoch[i])
+            cond1 = np.where(eff_area_data[:,0] < zero_crossings_times_in_epoch[i+1])
             cond = np.intersect1d(cond0, cond1)
-            plt.plot(data[cond,0], data[cond,1], label = label, color = color)
-        cond = np.where(data[:,0] > zero_crossings_times_in_epoch[-1])
+            plt.plot(eff_area_data[cond,0], eff_area_data[cond,1], label = label, color = color)
+        cond = np.where(eff_area_data[:,0] > zero_crossings_times_in_epoch[-1])
         cond = np.intersect1d(cond, cond)
-        plt.plot(data[cond,0], data[cond,1], color = 'red')
+        plt.plot(eff_area_data[cond,0], eff_area_data[cond,1], color = 'red')
         plt.xlabel('Year')
         plt.ylabel('Effective Area [cm$^2$]')
         plt.title(self.eff_area_file[:2]+'km/s')
         plt.legend()
         plt.show()
+        
     
     def _count_and_print_north_fraction(self):
         count0 = 0
@@ -234,6 +279,40 @@ class CleanedDataPlotter:
             if self._new_data[i,indices['LAT']] > 0:
                 countbeta += 1
         print('All data north fraction =', count0/len(self.data), ', no 999 north fraction =', count999/len(self.data_without_999), ', beta north fraction =', countbeta/len(self._new_data))
+
+
+    def _plot_effective_area_with_streams(self):
+            old_eff_area_data = np.loadtxt(self.eff_area_file, delimiter = ',')
+            if self.eff_area_file == 'DefaultDataset.csv':
+                old_eff_area_data[:,1] = old_eff_area_data[:,1]*10000
+                
+            x = np.linspace(old_eff_area_data[0,0], old_eff_area_data[-1,0], num = 100000)
+            eff_area_data = np.array([x, np.interp(x, old_eff_area_data[:,0], old_eff_area_data[:,1])])
+            
+            streams = []
+            for i in range(len(self._streams1)):
+                streams.append(self._streams1[i])
+            for i in range(len(self._streams2)):
+                streams.append(self._streams2[i])
+                
+            one_time_legend_flag = True
+            no_stream_index_list = range(len(eff_area_data[0,:]))
+            for interval in streams:
+                cond0 = np.where(eff_area_data[0,:] >= interval[0])
+                cond1 = np.where(eff_area_data[0,:] <= interval[1])
+                cond = np.intersect1d(cond0, cond1)
+                if one_time_legend_flag:
+                    plt.plot(eff_area_data[0,cond], eff_area_data[1,cond], label = 'Jupiter stream', color = 'black')
+                    one_time_legend_flag = False
+                else:
+                    plt.plot(eff_area_data[0,cond], eff_area_data[1,cond], color = 'black')
+                no_stream_index_list = list(set(no_stream_index_list) - set(cond))
+            plt.plot(eff_area_data[0,no_stream_index_list], eff_area_data[1,no_stream_index_list], label = 'No Jupiter stream', color = 'green', alpha = 0.1)
+            plt.xlabel('Year')
+            plt.ylabel('Effective Area [cm$^2$]')
+            plt.title(self.eff_area_file[:2]+'km/s')
+            plt.legend()
+            plt.show()
 
     
     def _plot_flux(self):
@@ -323,4 +402,5 @@ class CleanedDataPlotter:
         
         self._time_index = 0
         self._dist_index = 1
+        self._index_index = 2
         
