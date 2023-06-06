@@ -7,10 +7,9 @@ from MiscFunctions import find_nearest_idx
 class CleanedDataPlotter:
 
     def execute_wehry_special(self):
-        self._set_beta_parameters()
-        
         self._detector_sun_angles = self._calculate_angle_between_two_objects(self.data)
-        self._velocities = self.data[:, indices['velocity_index']]
+        self._velocities = self._calculate_velocities(self.data)
+        #self._velocities = self.data[:, indices['velocity_index']]
         
         self._plot_wehry(self._detector_sun_angles, self._velocities)
         self._effective_area()
@@ -37,7 +36,6 @@ class CleanedDataPlotter:
         self._plot_flux()
     
     def execute_wehry(self):
-        self._set_beta_parameters()
         self._remove_999_values()
         self._set_angles_and_velocities()
         self._plot_wehry(self._detector_sun_angles, self._velocities)
@@ -55,19 +53,6 @@ class CleanedDataPlotter:
         self._plot_effective_area_with_streams()
         self._plot_flux()
 
-    def _set_beta_parameters(self):
-        self._wehry_velocity = 20
-        self._wehry_angle = 50
-        self._streams1 = [[1991.727,1991.740],[1991.948,1991.953],[1991.978,1991.983],[1992.017,1992.021],[1992.048,1992.056],[1992.192,1992.196],[1992.268,1992.275],[1992.342,1992.349],[1992.417,1992.435],[1992.670,1992.685],[1992.796,1992.811]]
-        self._streams2 = [[2002.905,2002.917],[2003.515,2003.535],[2003.643,2003.663],[2003.717,2003.742],[2003.778,2003.802],[2003.862,2003.867],[2003.919,2003.928],[2003.993,2004.007],[2004.063,2004.078],[2004.138,2004.142],[2004.207,2004.231],[2004.410,2004.442],[2004.450,2004.510],[2004.544,2004.574],[2004.582,2004.603],[2004.625,2004.654],[2004.825,2004.833],[2004.907,2004.914],[2004.989,2005.001],[2005.113,2005.135],[2005.210,2005.236],[2005.474,2005.487],[2005.565,2005.583],[2005.615,2005.642]]
-        self._instrument = [ [2000.4905, 2000.49625], [2002.23297, 2002.2700], [2002.917692,2003.422021], [2003.5733, 2003.642642], [2004.918349, 2004.923907]]
-        self._interstellar_ecliptic_lon = 252
-        self._interstellar_ecliptic_lat = 2.5
-        self._tolerance = 30
-        self._interstellar_min_vel = 14
-        self._interstellar_min_mass = 2.5e-14
-        self._wehry_beta_particle_indices = [4,6,8,18,19,29,31,34,35,36,38,43,48,49,59,61,66,72,74,76,80,83,86,94,1032,1080,1145,1165,1410,1412,1421,1422,1427,1428,1429,1431,1433,1436,1438,1440,1442,1449,1450,1452,1455,1465,1984,2001,2003,2010,2012,2024,2034,2035,2048,2049,2051,2052,2053,2054,2055,2060]
-
     def _remove_999_values(self):
         ulysses_data_without_999 = []
         for i in range(self.start_index, self.end_index):
@@ -78,9 +63,9 @@ class CleanedDataPlotter:
 
     def _set_angles_and_velocities(self):
         self._detector_sun_angles = self._calculate_angle_between_two_objects(self.data_without_999)
-        self._velocities = self.data_without_999[:, indices['velocity_index']]
+        self._velocities = self._calculate_velocities(self.data_without_999)
 
-    def _calculate_angle_between_two_objects(self, data: list, target: str = 'SUN', observer: str = 'ULYSSES') -> list:
+    def _calculate_angle_between_two_objects(self, data: list) -> list:
         lon = data[:, indices['solar_lon_index']]
         lat = data[:, indices['solar_lat_index']]
         detector_sun_angles = []
@@ -88,9 +73,27 @@ class CleanedDataPlotter:
         for i in range(len(data[:,0])):
             [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'J2000', 'NONE', 'ULYSSES')
             posSun = stateSun[:3]
-            posDetector = spice.latrec(np.linalg.norm(posSun), lon[i], lat[i])
+            posDetector = spice.latrec(1, lon[i], lat[i])
             detector_sun_angles.append(spice.vsep(posDetector, posSun)*360/(2*np.pi))
         return detector_sun_angles
+    
+    def _calculate_velocities(self, data: list) -> list:
+        """
+        velDust = []
+        et = data[:, self._time_index]
+        for i in range(len(data[:,0])):
+            [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'J2000', 'NONE', 'ULYSSES')
+            posSunNorm = stateSun[:3]/np.linalg.norm(stateSun[:3])
+            velSun = stateSun[3:]
+            temp = velSun[0]*posSunNorm[0]+velSun[1]*posSunNorm[1]+velSun[2]*posSunNorm[2]
+            velRelative = data[i, indices['velocity_index']]
+            velUlysses = np.linalg.norm(velSun)
+            vel = -temp+np.sqrt(temp**2+velRelative**2-velUlysses**2)
+            velDust.append(vel)
+        return velDust
+        """
+    
+        return data[:, indices['velocity_index']]
 
     def _plot_wehry(self, angles: list, velocities: list):       
         plt.xlabel('Angle between detector axis and sun [°]')
@@ -123,19 +126,22 @@ class CleanedDataPlotter:
         beta_angles = []
         beta_vel = []
         for i, data in  enumerate(self.data_without_999):
+            #A minimum requirement for beta particles is a certain minimum velocity and maximum detector_sun_angle
             condition_wehry = self._detector_sun_angles[i] <= self._wehry_angle and self._velocities[i] >= self._wehry_velocity
-            condition_not_interstellar_angle = lon[i] < self._interstellar_ecliptic_lon-self._tolerance or lon[i] > self._interstellar_ecliptic_lon+self._tolerance or lat[i] < self._interstellar_ecliptic_lat-self._tolerance or lat[i] > self._interstellar_ecliptic_lat+self._tolerance
-            condition_not_interstellar_vel = self._velocities[i] > self._interstellar_min_vel
-            condition_not_interstellar_mass = mass[i] > self._interstellar_min_mass
-            condition_not_interstellar = condition_not_interstellar_angle and condition_not_interstellar_vel and condition_not_interstellar_mass
+            
+            #Particles are classified ISD if they come from a certain direction, have a certain minimum velocity and a certain minimum mass
+            condition_interstellar_angle = lon[i] > self._interstellar_ecliptic_lon-self._tolerance and lon[i] < self._interstellar_ecliptic_lon+self._tolerance and lat[i] > self._interstellar_ecliptic_lat-self._tolerance and lat[i] < self._interstellar_ecliptic_lat+self._tolerance
+            condition_interstellar_vel = self._velocities[i] > self._interstellar_min_vel
+            condition_interstellar_mass = mass[i] > self._interstellar_min_mass
+            condition_not_interstellar = not (condition_interstellar_angle and condition_interstellar_vel and condition_interstellar_mass)
+            
+            #Particles are considered as jupiter steam particles if they were detected within Strub's jupiter stream times
             condition_not_streams = True
             for interval in streams:
                 if et[i] >= interval[0] and et[i] <= interval[1]:
                     condition_not_streams = False
             
-            #condition_wehry = True
-            #condition_not_streams = True
-            #condition_not_interstellar = True
+            #Particles are considered beta if they pass the minimum requirement and are not ISD or jupiter stream particles
             condition = condition_wehry and condition_not_streams and condition_not_interstellar
             if condition:
                 beta_meteoroids.append(True)
@@ -179,10 +185,12 @@ class CleanedDataPlotter:
 
         #Seems like 200cm2 is pretty good
 
-    def _correct_by_effective_area(self, min_eff_area: float = 200):
+    def _correct_by_effective_area(self, min_eff_area: float = 0):
         new_data = []
         beta_dist = []
         eff_area_res = []
+        
+        #Only particles detected when the beta eff area was sufficiently high are counted
         for i in range(len(self.data_without_999)):
             if self._beta_meteoroids[i]:
                 closest_eff_area_idx = find_nearest_idx(self.eff_area_time, self.data_without_999[i, self._time_index])
@@ -203,7 +211,7 @@ class CleanedDataPlotter:
         
     def _set_new_angles_and_velocities(self):
         self._new_detector_sun_angles = self._calculate_angle_between_two_objects(self._new_data)
-        self._new_velocities = self._new_data[:, indices['velocity_index']]
+        self._new_velocities = self._calculate_velocities(self._new_data)
         
     def _compare_found_betas(self):
         print('Found beta indices:', self._new_data[:, self._index_index])
@@ -237,6 +245,9 @@ class CleanedDataPlotter:
         eff_area_data = np.loadtxt(self.eff_area_file, delimiter = ',')
         if self.eff_area_file == 'DefaultDataset.csv':
             eff_area_data[:,1] = eff_area_data[:,1]*10000
+            
+        #Check in which hemisphere Ulysses currently is
+        
         cond = np.where(eff_area_data[:,0] < zero_crossings_times_in_epoch[0])
         cond = np.intersect1d(cond, cond)
         plt.plot(eff_area_data[cond,0], eff_area_data[cond,1], label = 'Pre-Jupiter fly-by', color = 'black')
@@ -294,7 +305,9 @@ class CleanedDataPlotter:
                 streams.append(self._streams1[i])
             for i in range(len(self._streams2)):
                 streams.append(self._streams2[i])
-                
+            
+            #Check when Ulysses is within a Jupiter stream
+            
             one_time_legend_flag = True
             no_stream_index_list = range(len(eff_area_data[0,:]))
             for interval in streams:
@@ -338,7 +351,8 @@ class CleanedDataPlotter:
         plt.legend()
         plt.show()
         
-
+        
+    #Bins over pre-fly-by, north sections an south sections and calculates fluxes and mean effective area of bin
     def _calculate_mean_eff_area_and_flux(self) -> (list, list):
         
         flux_bins = []
@@ -403,4 +417,17 @@ class CleanedDataPlotter:
         self._time_index = 0
         self._dist_index = 1
         self._index_index = 2
+        
+        self._wehry_velocity = 20
+        self._wehry_angle = 50
+        self._streams1 = [[1991.727,1991.740],[1991.948,1991.953],[1991.978,1991.983],[1992.017,1992.021],[1992.048,1992.056],[1992.192,1992.196],[1992.268,1992.275],[1992.342,1992.349],[1992.417,1992.435],[1992.670,1992.685],[1992.796,1992.811]]
+        self._streams2 = [[2002.905,2002.917],[2003.515,2003.535],[2003.643,2003.663],[2003.717,2003.742],[2003.778,2003.802],[2003.862,2003.867],[2003.919,2003.928],[2003.993,2004.007],[2004.063,2004.078],[2004.138,2004.142],[2004.207,2004.231],[2004.410,2004.442],[2004.450,2004.510],[2004.544,2004.574],[2004.582,2004.603],[2004.625,2004.654],[2004.825,2004.833],[2004.907,2004.914],[2004.989,2005.001],[2005.113,2005.135],[2005.210,2005.236],[2005.474,2005.487],[2005.565,2005.583],[2005.615,2005.642]]
+        self._instrument = [ [2000.4905, 2000.49625], [2002.23297, 2002.2700], [2002.917692,2003.422021], [2003.5733, 2003.642642], [2004.918349, 2004.923907]]
+        self._interstellar_ecliptic_lon = 252
+        self._interstellar_ecliptic_lat = 2.5
+        self._tolerance = 30
+        self._interstellar_min_vel = 14
+        self._interstellar_min_mass = 2.5e-14
+        self._wehry_beta_particle_indices = [4,6,8,18,19,29,31,34,35,36,38,43,48,49,59,61,66,72,74,76,80,83,86,94,1032,1080,1145,1165,1410,1412,1421,1422,1427,1428,1429,1431,1433,1436,1438,1440,1442,1449,1450,1452,1455,1465,1984,2001,2003,2010,2012,2024,2034,2035,2048,2049,2051,2052,2053,2054,2055,2060]
+
         

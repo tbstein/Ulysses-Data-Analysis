@@ -19,7 +19,10 @@ last_data_column = 34
 min_quality_flag = 2
 all_lines = True
 
-wehry_comparison = True
+wehry_comparison = False
+
+#min_eff_area_factor = 50
+min_eff_area_factor = 0
 
 used_cols = (i for i in range(first_data_column, last_data_column))
 
@@ -80,7 +83,7 @@ LinesPlotter.min_quality_flag = min_quality_flag
 LinesPlotter.rotation_angle_index = indices['rotation_angle_index']
 LinesPlotter.quality_flag_index = indices['quality_flag_index']
 LinesPlotter.one_year_et = one_year_et
-LinesPlotter.min_eff_area_factor = 50
+LinesPlotter.min_eff_area_factor = min_eff_area_factor
 LinesPlotter.eff_area_file = 'DefaultDataset.csv'
 #LinesPlotter.eff_area_file = '20.dat'
 
