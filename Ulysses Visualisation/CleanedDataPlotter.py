@@ -7,32 +7,22 @@ from MiscFunctions import find_nearest_idx
 class CleanedDataPlotter:
 
     def execute_wehry_special(self):
-        self._detector_sun_angles = self._calculate_angle_between_two_objects(self.data)
-        self._velocities = self._calculate_velocities(self.data)
-        #self._velocities = self.data[:, indices['velocity_index']]
+        self._detector_sun_angles, self._velocities = self._calculate_angle_and_velocities_between_two_objects(self.data)
         
         self._plot_wehry(self._detector_sun_angles, self._velocities)
         self._effective_area()
         
-        new_data = []
-        beta_dist = []
         eff_area_res = []
         for i in range(len(self.data)):
             closest_eff_area_idx = find_nearest_idx(self.eff_area_time, self.data[i, self._time_index])
             eff_area_res.append(self._eff_area_data[closest_eff_area_idx,1])
-            new_data.append(self.data[i])
-            beta_dist.append(self.data[i,self._dist_index])  
-        beta_dist = np.array(beta_dist)
-        new_data = np.array(new_data)
         eff_area_res = np.array(eff_area_res)
-        self._new_data = new_data
-        self._beta_dist = beta_dist
+        self._beta_dist = self.data[:,self._dist_index]
         self._eff_area_res = eff_area_res
-        
         self._new_data = self.data
-        self.data = self.raw_data
         
         self._calculate_zero_crossings_times()
+        self._effective_area_with_lat()
         self._plot_flux()
     
     def execute_wehry(self):
@@ -48,7 +38,7 @@ class CleanedDataPlotter:
         self._compare_found_betas()
         self._plot_lat()
         self._calculate_zero_crossings_times()
-        self._plot_effective_area_with_lat()
+        self._effective_area_with_lat()
         self._count_and_print_north_fraction()
         self._plot_effective_area_with_streams()
         self._plot_flux()
@@ -62,42 +52,29 @@ class CleanedDataPlotter:
         self.data_without_999 = np.array(ulysses_data_without_999)
 
     def _set_angles_and_velocities(self):
-        self._detector_sun_angles = self._calculate_angle_between_two_objects(self.data_without_999)
-        self._velocities = self._calculate_velocities(self.data_without_999)
+        self._detector_sun_angles, self._velocities = self._calculate_angle_and_velocities_between_two_objects(self.data_without_999)
 
-    def _calculate_angle_between_two_objects(self, data: list) -> list:
+    def _calculate_angle_and_velocities_between_two_objects(self, data: list) -> (list, list):
         lon = data[:, indices['solar_lon_index']]
         lat = data[:, indices['solar_lat_index']]
         detector_sun_angles = []
-        et = data[:, self._time_index]
-        for i in range(len(data[:,0])):
-            [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'J2000', 'NONE', 'ULYSSES')
-            posSun = stateSun[:3]
-            posDetector = spice.latrec(1, lon[i], lat[i])
-            detector_sun_angles.append(spice.vsep(posDetector, posSun)*360/(2*np.pi))
-        return detector_sun_angles
-    
-    def _calculate_velocities(self, data: list) -> list:
-        """
         velDust = []
         et = data[:, self._time_index]
         for i in range(len(data[:,0])):
             [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'J2000', 'NONE', 'ULYSSES')
-            posSunNorm = stateSun[:3]/np.linalg.norm(stateSun[:3])
+            posSun = stateSun[:3]
             velSun = stateSun[3:]
-            temp = velSun[0]*posSunNorm[0]+velSun[1]*posSunNorm[1]+velSun[2]*posSunNorm[2]
             velRelative = data[i, indices['velocity_index']]
-            velUlysses = np.linalg.norm(velSun)
-            vel = -temp+np.sqrt(temp**2+velRelative**2-velUlysses**2)
+            posDetector = spice.latrec(1, lon[i], lat[i])
+            vel = np.linalg.norm(velSun+velRelative*posDetector)
+            detector_sun_angles.append(spice.vsep(posDetector, posSun)*360/(2*np.pi))
             velDust.append(vel)
-        return velDust
-        """
-    
-        return data[:, indices['velocity_index']]
+        return detector_sun_angles, velDust
+        
 
     def _plot_wehry(self, angles: list, velocities: list):       
         plt.xlabel('Angle between detector axis and sun [°]')
-        plt.ylabel('Relative Velocity [km/s]')
+        plt.ylabel('Absolute Particle Velocity [km/s]')
         plt.title(self.current_year)           
         plt.scatter(angles,velocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
@@ -181,7 +158,6 @@ class CleanedDataPlotter:
             
             plt.hist(self._beta_dist)
             plt.show()
-            print(len(self._beta_dist), 'beta meteoroids found')
 
         #Seems like 200cm2 is pretty good
 
@@ -210,8 +186,7 @@ class CleanedDataPlotter:
         self._eff_area_res = eff_area_res
         
     def _set_new_angles_and_velocities(self):
-        self._new_detector_sun_angles = self._calculate_angle_between_two_objects(self._new_data)
-        self._new_velocities = self._calculate_velocities(self._new_data)
+        self._new_detector_sun_angles, self._new_velocities = self._calculate_angle_and_velocities_between_two_objects(self._new_data)
         
     def _compare_found_betas(self):
         print('Found beta indices:', self._new_data[:, self._index_index])
@@ -235,22 +210,26 @@ class CleanedDataPlotter:
 
     def _calculate_zero_crossings_times(self) -> list:
         #https://stackoverflow.com/questions/3843017/efficiently-detect-sign-changes-in-python
-        zero_crossings = np.where(np.diff(np.signbit(self.data[:,indices['LAT']])))[0]
-        zero_crossings_times = self.data[zero_crossings, self._time_index]
-        print('Latitude = 0 at', zero_crossings_times/self.one_year_et+2000)
+        zero_crossings = np.where(np.diff(np.signbit(self.raw_data[:,indices['LAT']])))[0]
+        zero_crossings_times = self.raw_data[zero_crossings, self._time_index]
         self._zero_crossings_times = zero_crossings_times
         
-    def _plot_effective_area_with_lat(self):
+    def _effective_area_with_lat(self):
         zero_crossings_times_in_epoch = self._zero_crossings_times/self.one_year_et+2000
         eff_area_data = np.loadtxt(self.eff_area_file, delimiter = ',')
         if self.eff_area_file == 'DefaultDataset.csv':
             eff_area_data[:,1] = eff_area_data[:,1]*10000
             
-        #Check in which hemisphere Ulysses currently is
+        #Check in which hemisphere Ulysses currently is, plot that, and calculate the average effective area for that bin
+        #Does the same thing three times, for pre-Jupiter, for everything but the last semi-orbit, and for the last semi-orbit
         
+        #Number 1
         cond = np.where(eff_area_data[:,0] < zero_crossings_times_in_epoch[0])
         cond = np.intersect1d(cond, cond)
+        avg_eff_area = [np.mean(eff_area_data[cond,1])]
         plt.plot(eff_area_data[cond,0], eff_area_data[cond,1], label = 'Pre-Jupiter fly-by', color = 'black')
+        
+        #Number 2 to n-1
         for i in range(len(zero_crossings_times_in_epoch)-1):
             if i == 0:
                 label = 'South'
@@ -265,15 +244,21 @@ class CleanedDataPlotter:
             cond0 = np.where(eff_area_data[:,0] > zero_crossings_times_in_epoch[i])
             cond1 = np.where(eff_area_data[:,0] < zero_crossings_times_in_epoch[i+1])
             cond = np.intersect1d(cond0, cond1)
+            avg_eff_area.append(np.mean(eff_area_data[cond,1]))
             plt.plot(eff_area_data[cond,0], eff_area_data[cond,1], label = label, color = color)
+            
+        #Number n
         cond = np.where(eff_area_data[:,0] > zero_crossings_times_in_epoch[-1])
         cond = np.intersect1d(cond, cond)
+        avg_eff_area.append(np.mean(eff_area_data[cond,1]))
         plt.plot(eff_area_data[cond,0], eff_area_data[cond,1], color = 'red')
         plt.xlabel('Year')
         plt.ylabel('Effective Area [cm$^2$]')
         plt.title(self.eff_area_file[:2]+'km/s')
         plt.legend()
         plt.show()
+        
+        self._avg_eff_area = np.array(avg_eff_area)
         
     
     def _count_and_print_north_fraction(self):
@@ -343,14 +328,6 @@ class CleanedDataPlotter:
         plt.legend()
         plt.show()
         
-        for i in range(len(color_array)-1):
-            plt.scatter(mean_dist_array[i], flux_bins[i]*10000, label = label_array[i], color = color_array[i])
-        plt.xlabel('Distance [au]')
-        plt.ylabel(r'Flux [1/(m$^2\cdot$s)]')
-        plt.yscale('log')
-        plt.legend()
-        plt.show()
-        
         
     #Bins over pre-fly-by, north sections an south sections and calculates fluxes and mean effective area of bin
     def _calculate_mean_eff_area_and_flux(self) -> (list, list):
@@ -358,51 +335,41 @@ class CleanedDataPlotter:
         flux_bins = []
         mean_dist_array = []
         
+        #Does the same thing three times, for pre-Jupiter, for everything but the last semi-orbit, and for the last semi-orbit
         
-        
-        eff_area_array = []
+        #Number 1
         dist_array = []
         
         for i in range(len(self._new_data)):
             if self._new_data[i, self._time_index]<=self._zero_crossings_times[0]:
-                eff_area_array.append(self._eff_area_res[i])
                 dist_array.append(self._beta_dist[i])
         dist_array = np.array(dist_array)
         mean_dist_array.append(np.mean(dist_array))
-        eff_area_array = np.array(eff_area_array)
-        mean_eff_area = np.mean(eff_area_array)
-        flux_bins.append(1/(mean_eff_area*(self._zero_crossings_times[1]-self.data[0, self._time_index])))
+        flux_bins.append(1/(self._avg_eff_area[0]*(self._zero_crossings_times[1]-self.raw_data[0, self._time_index])))
         
+        #Number 2 to n-1
         for k in range(len(self._zero_crossings_times)-1):
-            eff_area_array = []
             dist_array = []
             
             idx = find_nearest_idx(self._new_data[:, self._time_index], self._zero_crossings_times[k])
             
             for i in range(idx, len(self._new_data)):
                 if self._new_data[i, self._time_index]<=self._zero_crossings_times[k+1]:
-                    eff_area_array.append(self._eff_area_res[i])
                     dist_array.append(self._beta_dist[i])
             dist_array = np.array(dist_array)
             mean_dist_array.append(np.mean(dist_array))
-            eff_area_array = np.array(eff_area_array)
-            mean_eff_area = np.mean(eff_area_array)
-            flux_bins.append(1/(mean_eff_area*(self._zero_crossings_times[k+1]-self._zero_crossings_times[k])))
+            flux_bins.append(1/(self._avg_eff_area[k+1]*(self._zero_crossings_times[k+1]-self._zero_crossings_times[k])))
             
-            
-        eff_area_array = []
+        #Number n 
         dist_array = []
         
         idx = find_nearest_idx(self._new_data[:, self._time_index], self._zero_crossings_times[-1])
         
         for i in range(idx, len(self._new_data)):
-            eff_area_array.append(self._eff_area_res[i])
             dist_array.append(self._beta_dist[i])
         dist_array = np.array(dist_array)
         mean_dist_array.append(np.mean(dist_array))
-        eff_area_array = np.array(eff_area_array)
-        mean_eff_area = np.mean(eff_area_array)
-        flux_bins.append(1/(mean_eff_area*(self.data[-1, self._time_index]-self._zero_crossings_times[-1])))
+        flux_bins.append(1/(self._avg_eff_area[-1]*(self.raw_data[-1, self._time_index]-self._zero_crossings_times[-1])))
             
             
         mean_dist_array = np.array(mean_dist_array)

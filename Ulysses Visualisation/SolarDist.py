@@ -1,5 +1,3 @@
-# %%
-
 import numpy as np
 from indices_dict import indices
 import spiceypy as spice
@@ -19,7 +17,7 @@ last_data_column = 34
 min_quality_flag = 2
 all_lines = True
 
-wehry_comparison = False
+wehry_comparison = True
 
 #min_eff_area_factor = 50
 min_eff_area_factor = 0
