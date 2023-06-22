@@ -32,6 +32,12 @@ class CleanedDataPlotter:
         self._choose_beta_meteoroids()
         self._plot_wehry(self._beta_angles, self._beta_vel)
         self._effective_area()
+        """
+        Perihel distanz, nicht ulysses abstand
+        oscelt_c
+        look up gravitational parameter and beta
+        Gustafson for beta curves 
+        """
         self._minimum_effective_area_hist()
         self._set_new_angles_and_velocities()
         self._plot_wehry(self._new_detector_sun_angles, self._new_velocities)
@@ -54,6 +60,7 @@ class CleanedDataPlotter:
     def _set_angles_and_velocities(self):
         self._detector_sun_angles, self._velocities = self._calculate_angle_and_velocities_between_two_objects(self.data_without_999)
 
+    """
     def _calculate_angle_and_velocities_between_two_objects(self, data: list) -> (list, list):
         lon = data[:, indices['solar_lon_index']]
         lat = data[:, indices['solar_lat_index']]
@@ -61,19 +68,43 @@ class CleanedDataPlotter:
         velDust = []
         et = data[:, self._time_index]
         for i in range(len(data[:,0])):
-            [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'J2000', 'NONE', 'ULYSSES')
+            [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'ECLIPJ2000', 'NONE', 'ULYSSES')
+            #[stateSun, ltime] = spice.spkezr('ULYSSES',  et[i],      'ECLIPJ2000', 'NONE', 'SUN')
             posSun = stateSun[:3]
             velSun = stateSun[3:]
             velRelative = data[i, indices['velocity_index']]
-            posDetector = spice.latrec(1, lon[i], lat[i])
+            posDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
             vel = np.linalg.norm(velSun+velRelative*posDetector)
             detector_sun_angles.append(spice.vsep(posDetector, posSun)*360/(2*np.pi))
             velDust.append(vel)
         return detector_sun_angles, velDust
+    """
+    
+    
+    def _calculate_angle_and_velocities_between_two_objects(self, data: list) -> (list, list):
+        lon = data[:, indices['solar_lon_index']]
+        lat = data[:, indices['solar_lat_index']]
+        detector_sun_angles = []
+        velDust = []
+        et = data[:, self._time_index]
+        for i in range(len(data[:,0])):
+            [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'ECLIPJ2000', 'NONE', 'ULYSSES')
+            [stateUlysses, ltime] = spice.spkezr('ULYSSES',  et[i],      'ECLIPJ2000', 'NONE', 'SUN')
+            posSun = stateSun[:3]
+            velSun = stateSun[3:]
+            posUlysses = stateUlysses[:3]
+            velUlysses = stateUlysses[3:]
+            velImpact = data[i, indices['velocity_index']]
+            pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
+            #vel = np.linalg.norm(-velSun+velRelative*posDetector)
+            vel = velUlysses-velImpact*pointingDetector
+            detector_sun_angles.append(-spice.vsep(vel, -posUlysses)*360/(2*np.pi)+180)
+            velDust.append(np.linalg.norm(vel))
+        return detector_sun_angles, velDust
         
 
     def _plot_wehry(self, angles: list, velocities: list):       
-        plt.xlabel('Angle between detector axis and sun [°]')
+        plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
         plt.ylabel('Absolute Particle Velocity [km/s]')
         plt.title(self.current_year)           
         plt.scatter(angles,velocities)
@@ -107,8 +138,14 @@ class CleanedDataPlotter:
             condition_wehry = self._detector_sun_angles[i] <= self._wehry_angle and self._velocities[i] >= self._wehry_velocity
             
             #Particles are classified ISD if they come from a certain direction, have a certain minimum velocity and a certain minimum mass
+            """
+            Falsches Bezugssystem winkel und geschwindigkeit und statt +-30 degrees lat und lon 30 degrees insgesamt
+            """
             condition_interstellar_angle = lon[i] > self._interstellar_ecliptic_lon-self._tolerance and lon[i] < self._interstellar_ecliptic_lon+self._tolerance and lat[i] > self._interstellar_ecliptic_lat-self._tolerance and lat[i] < self._interstellar_ecliptic_lat+self._tolerance
             condition_interstellar_vel = self._velocities[i] > self._interstellar_min_vel
+            """
+            Lennart anschreiben fuer siene IDentifikation
+            """
             condition_interstellar_mass = mass[i] > self._interstellar_min_mass
             condition_not_interstellar = not (condition_interstellar_angle and condition_interstellar_vel and condition_interstellar_mass)
             
@@ -331,6 +368,10 @@ class CleanedDataPlotter:
         
     #Bins over pre-fly-by, north sections an south sections and calculates fluxes and mean effective area of bin
     def _calculate_mean_eff_area_and_flux(self) -> (list, list):
+        
+        """
+        Add number of detected particles
+        """
         
         flux_bins = []
         mean_dist_array = []

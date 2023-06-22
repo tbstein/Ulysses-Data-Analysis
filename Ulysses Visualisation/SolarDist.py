@@ -17,7 +17,7 @@ last_data_column = 34
 min_quality_flag = 2
 all_lines = True
 
-wehry_comparison = True
+wehry_comparison = False
 
 #min_eff_area_factor = 50
 min_eff_area_factor = 0
@@ -40,7 +40,7 @@ time = spice.str2et(time)
 dist_array = []
 
 for et in time:
-    [pos, ltime] = spice.spkpos('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
+    [pos, ltime] = spice.spkpos('SUN',  et,      'ECLIPJ2000', 'NONE', 'ULYSSES')
     dist = spice.vnorm(pos)
     dist = spice.convrt(dist, 'KM', 'AU')
     dist_array.append(dist)

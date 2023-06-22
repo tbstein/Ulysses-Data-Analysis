@@ -96,15 +96,17 @@ plt.show()
 wehry = np.loadtxt('DefaultDataset.csv', delimiter = ',')
 
 velocity_dust = 20
-for i in range(6):
+for i in range(1):
 
     velocity_dust = 20+10*i
     
     angle = []
     factor = []
     for et in time:
-        [stateSun, ltime] = spice.spkezr('SUN',  et,      'J2000', 'NONE', 'ULYSSES')
-        [stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'J2000', 'NONE', 'ULYSSES')
+        [stateSun, ltime] = spice.spkezr('SUN',  et,      'ECLIPJ2000', 'NONE', 'ULYSSES')
+        [stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'ECLIPJ2000', 'NONE', 'ULYSSES')
+        #[stateSun, ltime] = spice.spkezr('ULYSSES',  et,      'ECLIPJ2000', 'NONE', 'SUN')
+        #[stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'ECLIPJ2000', 'NONE', 'SUN')
         velSun = stateSun[3:]
         posEarth = stateEarth[:3]
         posSun = stateSun[:3]
@@ -112,6 +114,8 @@ for i in range(6):
         relVel = velSun-dustVel
         factor.append(np.abs(np.linalg.norm(relVel)/np.linalg.norm(dustVel)))
         angle.append(spice.vsep(velSun+dustVel, posEarth))
+        #angle.append(spice.vsep(velSun+dustVel, -posEarth+posSun))
+        
         
     factor = np.array(factor)
     
