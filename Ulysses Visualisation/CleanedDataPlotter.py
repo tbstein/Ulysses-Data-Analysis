@@ -133,6 +133,26 @@ class CleanedDataPlotter:
         beta_meteoroids = []
         beta_angles = []
         beta_vel = []
+        
+        
+        ISD_direction = spice.latrec(1, self._interstellar_ecliptic_lon*2*np.pi/360, self._interstellar_ecliptic_lat*2*np.pi/360)
+        detector_ISD_angles = []
+        velDust = []
+        et = self.data_without_999[:, self._time_index]
+        for i in range(len(self.data_without_999[:,0])):
+            [stateUlysses, ltime] = spice.spkezr('ULYSSES',  et[i],      'ECLIPJ2000', 'NONE', 'SUN')
+            velUlysses = stateUlysses[3:]
+            velImpact = self.data_without_999[i, indices['velocity_index']]
+            pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
+            vel = velUlysses-velImpact*pointingDetector
+            detector_ISD_angles.append(spice.vsep(vel, ISD_direction)*360/(2*np.pi))
+            velDust.append(np.linalg.norm(vel))
+        plt.scatter(et/self.one_year_et+2000, detector_ISD_angles)
+        plt.plot(et/self.one_year_et+2000, self._tolerance*np.ones(len(detector_ISD_angles)), color = 'red')
+        plt.xlabel('Time')
+        plt.ylabel('Angle between dust velocity and ISD [°]')
+        plt.show()
+        
         for i, data in  enumerate(self.data_without_999):
             #A minimum requirement for beta particles is a certain minimum velocity and maximum detector_sun_angle
             condition_wehry = self._detector_sun_angles[i] <= self._wehry_angle and self._velocities[i] >= self._wehry_velocity
@@ -141,8 +161,8 @@ class CleanedDataPlotter:
             """
             Falsches Bezugssystem winkel und geschwindigkeit und statt +-30 degrees lat und lon 30 degrees insgesamt
             """
-            condition_interstellar_angle = lon[i] > self._interstellar_ecliptic_lon-self._tolerance and lon[i] < self._interstellar_ecliptic_lon+self._tolerance and lat[i] > self._interstellar_ecliptic_lat-self._tolerance and lat[i] < self._interstellar_ecliptic_lat+self._tolerance
-            condition_interstellar_vel = self._velocities[i] > self._interstellar_min_vel
+            condition_interstellar_angle = detector_ISD_angles[i] < self._tolerance
+            condition_interstellar_vel = velDust[i] > self._interstellar_min_vel
             """
             Lennart anschreiben fuer siene IDentifikation
             """
@@ -185,16 +205,49 @@ class CleanedDataPlotter:
         self.eff_area_time = eff_area_time
 
     def _minimum_effective_area_hist(self):
-
-        for i in range(1,2):
-            self._correct_by_effective_area(min_eff_area=self.min_eff_area_factor*i)
+        
+        GM_km3_per_s2 = 1.327e11
+        au_in_km  = 149597870.7
+        
+        peri = []
+        for I in range(1,2):
+            self._correct_by_effective_area(min_eff_area=self.min_eff_area_factor*I)
             
-            plt.xlabel('Distance [au]')
+            beta_data = np.loadtxt('silicate0.00.txt', usecols = (1,2), skiprows = 1, delimiter = ' ')
+            mass = self._new_data[:,indices['mass_index']]/1000
+            
+            
+            for i in range(len(self._new_data)):
+                idx = find_nearest_idx(beta_data[:,0], mass[i])
+                [state, ltime] = spice.spkezr('ULYSSES',  self._new_data[i,self._time_index],      'ECLIPJ2000', 'NONE', 'SUN')
+                beta = beta_data[idx,1]
+                elts = spice.oscelt(state, self._new_data[i,self._time_index], (1-beta)*GM_km3_per_s2)
+                peri.append(elts[0]/au_in_km)
+            
+            plt.xlabel('Perihelion distance [au]')
             plt.ylabel('Count')
-            plt.title('Minimum effective area = ' + str(self.min_eff_area_factor*i) + r'cm$^2$')
             
-            plt.hist(self._beta_dist)
+            plt.hist(peri)
             plt.show()
+            
+            """
+            for beta in np.linspace(0, 0.9, num = 10):
+                peri = []
+                for i in range(len(self._new_data)):
+                    [state, ltime] = spice.spkezr('ULYSSES',  self._new_data[i,self._time_index],      'ECLIPJ2000', 'NONE', 'SUN')
+                    elts = spice.oscelt(state, self._new_data[i,self._time_index], (1-beta)*GM_km3_per_s2)
+                    peri.append(elts[0]/au_in_km)
+                
+                
+                plt.xlabel('Perihelion distance [au]')
+                plt.ylabel('Count')
+                plt.title(r'$\beta$ = 0.' + str(int(beta*10)))
+                
+                #plt.hist(self._beta_dist)
+                plt.hist(peri)
+                plt.show()
+            """
+
 
         #Seems like 200cm2 is pretty good
 
@@ -313,7 +366,6 @@ class CleanedDataPlotter:
                 countbeta += 1
         print('All data north fraction =', count0/len(self.data), ', no 999 north fraction =', count999/len(self.data_without_999), ', beta north fraction =', countbeta/len(self._new_data))
 
-
     def _plot_effective_area_with_streams(self):
             old_eff_area_data = np.loadtxt(self.eff_area_file, delimiter = ',')
             if self.eff_area_file == 'DefaultDataset.csv':
@@ -386,20 +438,20 @@ class CleanedDataPlotter:
                 dist_array.append(self._beta_dist[i])
         dist_array = np.array(dist_array)
         mean_dist_array.append(np.mean(dist_array))
-        flux_bins.append(1/(self._avg_eff_area[0]*(self._zero_crossings_times[1]-self.raw_data[0, self._time_index])))
+        flux_bins.append(len(dist_array)/(self._avg_eff_area[0]*(self._zero_crossings_times[1]-self.raw_data[0, self._time_index])))
         
         #Number 2 to n-1
         for k in range(len(self._zero_crossings_times)-1):
             dist_array = []
             
-            idx = find_nearest_idx(self._new_data[:, self._time_index], self._zero_crossings_times[k])
+            idx = find_nearest_idx(self._new_data[:, self._time_index], self._zero_crossings_times[k])+1
             
             for i in range(idx, len(self._new_data)):
                 if self._new_data[i, self._time_index]<=self._zero_crossings_times[k+1]:
                     dist_array.append(self._beta_dist[i])
             dist_array = np.array(dist_array)
             mean_dist_array.append(np.mean(dist_array))
-            flux_bins.append(1/(self._avg_eff_area[k+1]*(self._zero_crossings_times[k+1]-self._zero_crossings_times[k])))
+            flux_bins.append(len(dist_array)/(self._avg_eff_area[k+1]*(self._zero_crossings_times[k+1]-self._zero_crossings_times[k])))
             
         #Number n 
         dist_array = []
@@ -410,11 +462,12 @@ class CleanedDataPlotter:
             dist_array.append(self._beta_dist[i])
         dist_array = np.array(dist_array)
         mean_dist_array.append(np.mean(dist_array))
-        flux_bins.append(1/(self._avg_eff_area[-1]*(self.raw_data[-1, self._time_index]-self._zero_crossings_times[-1])))
+        flux_bins.append(len(dist_array)/(self._avg_eff_area[-1]*(self.raw_data[-1, self._time_index]-self._zero_crossings_times[-1])))
             
             
         mean_dist_array = np.array(mean_dist_array)
         flux_bins = np.array(flux_bins)
+        
         
         return mean_dist_array, flux_bins
     
@@ -433,6 +486,9 @@ class CleanedDataPlotter:
         self._instrument = [ [2000.4905, 2000.49625], [2002.23297, 2002.2700], [2002.917692,2003.422021], [2003.5733, 2003.642642], [2004.918349, 2004.923907]]
         self._interstellar_ecliptic_lon = 252
         self._interstellar_ecliptic_lat = 2.5
+        """
+        try different tolerances
+        """
         self._tolerance = 30
         self._interstellar_min_vel = 14
         self._interstellar_min_mass = 2.5e-14

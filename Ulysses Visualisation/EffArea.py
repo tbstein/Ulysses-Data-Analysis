@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import spiceypy as spice
 from MiscFunctions import find_nearest_idx
+from indices_dict import indices
 
 #Units of spice are km and km/s
 
@@ -40,7 +41,25 @@ start_et = spice.str2et('90-301T13:53')
 end_et = spice.str2et('07-334T08:17')
 
 num = 10000
-time = np.linspace(start_et, end_et, num=num)
+#time = np.linspace(start_et, end_et, num=num)
+
+index = []
+time = []
+lon = []
+lat = []
+with open('Ulysses_Data_File_Cleaned.txt') as cleaned_ulysses_data:
+    for count, line in enumerate(cleaned_ulysses_data):
+        if count >= indices['first_data_line']:
+            line = line.split()
+            time.append(line[indices['date']]+'T'+line[indices['time_of_day']])
+            lon.append(float(line[indices['solar_lon_index']]))
+            lat.append(float(line[indices['solar_lat_index']]))
+
+lon = np.array(lon)
+lat = np.array(lat)
+
+time = spice.str2et(time)
+
 delta_t = (end_et-start_et)/num
 
 max_area = 1000
@@ -103,18 +122,18 @@ for i in range(1):
     angle = []
     factor = []
     for et in time:
-        [stateSun, ltime] = spice.spkezr('SUN',  et,      'ECLIPJ2000', 'NONE', 'ULYSSES')
-        [stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'ECLIPJ2000', 'NONE', 'ULYSSES')
-        #[stateSun, ltime] = spice.spkezr('ULYSSES',  et,      'ECLIPJ2000', 'NONE', 'SUN')
+        [stateUlysses, ltime] = spice.spkezr('ULYSSES',  et,      'ECLIPJ2000', 'NONE', 'SUN')
         #[stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'ECLIPJ2000', 'NONE', 'SUN')
-        velSun = stateSun[3:]
-        posEarth = stateEarth[:3]
-        posSun = stateSun[:3]
-        dustVel = velocity_dust*posSun/(np.linalg.norm(posSun))
-        relVel = velSun-dustVel
+        velUlysses = stateUlysses[3:]
+        #posEarth = stateEarth[:3]
+        posUlysses = stateUlysses[:3]
+        dustVel = velocity_dust*posUlysses/(np.linalg.norm(posUlysses))
+        relVel = velUlysses-dustVel
+        pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
         factor.append(np.abs(np.linalg.norm(relVel)/np.linalg.norm(dustVel)))
-        angle.append(spice.vsep(velSun+dustVel, posEarth))
-        #angle.append(spice.vsep(velSun+dustVel, -posEarth+posSun))
+        #angle.append(spice.vsep(velUlysses+dustVel, posEarth-posUlysses))
+        angle.append(spice.vsep(-(velUlysses+dustVel), pointingDetector))
+        #angle.append(-spice.vsep(-(velUlysses+dustVel), pointingDetector)+np.pi)
         
         
     factor = np.array(factor)
