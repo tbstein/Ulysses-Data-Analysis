@@ -28,8 +28,10 @@ class CleanedDataPlotter:
     def execute_wehry(self):
         self._remove_999_values()
         self._set_angles_and_velocities()
+        self._calls = 0
         self._plot_wehry(self._detector_sun_angles, self._velocities)
         self._choose_beta_meteoroids()
+        self._calls = 1
         self._plot_wehry(self._beta_angles, self._beta_vel)
         self._effective_area()
         """
@@ -40,6 +42,7 @@ class CleanedDataPlotter:
         """
         self._minimum_effective_area_hist()
         self._set_new_angles_and_velocities()
+        self._calls = 2
         self._plot_wehry(self._new_detector_sun_angles, self._new_velocities)
         self._compare_found_betas()
         self._plot_lat()
@@ -110,6 +113,13 @@ class CleanedDataPlotter:
         plt.scatter(angles,velocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        
+        if self._calls == 0:
+        	plt.savefig('01_wehry_all.png')
+        elif self._calls == 1:
+        	plt.savefig('03_wehry_beta.png')
+        elif self._calls == 2:
+        	pass
         plt.show() 
 
     def _choose_beta_meteoroids(self) -> list:
@@ -151,6 +161,7 @@ class CleanedDataPlotter:
         plt.plot(et/self.one_year_et+2000, self._tolerance*np.ones(len(detector_ISD_angles)), color = 'red')
         plt.xlabel('Time')
         plt.ylabel('Angle between dust velocity and ISD [°]')
+        plt.savefig('02_ISD.png')
         plt.show()
         
         for i, data in  enumerate(self.data_without_999):
@@ -196,6 +207,7 @@ class CleanedDataPlotter:
         plt.xlabel('Year')
         plt.ylabel('Effective Area [cm$^2$]')
         plt.title(self.eff_area_file[:2]+'km/s')
+        plt.savefig('04_effArea.png')
         plt.show()
         eff_area_time = []
         for i in eff_area_data[:,0]:        
@@ -211,7 +223,7 @@ class CleanedDataPlotter:
         
         peri = []
         for I in range(1,2):
-            self._correct_by_effective_area(min_eff_area=self.min_eff_area_factor*I)
+            self._correct_by_effective_area()
             
             beta_data = np.loadtxt('silicate0.00.txt', usecols = (1,2), skiprows = 1, delimiter = ' ')
             mass = self._new_data[:,indices['mass_index']]/1000
@@ -228,6 +240,7 @@ class CleanedDataPlotter:
             plt.ylabel('Count')
             
             plt.hist(peri)
+            plt.savefig('05_periHist.png')
             plt.show()
             
             """
@@ -296,6 +309,7 @@ class CleanedDataPlotter:
         plt.xlabel('Time')
         plt.ylabel('Ulysses Ecliptic Latitude [°]')
         plt.legend()
+        plt.savefig('06_lat.png')
         plt.show()
 
     def _calculate_zero_crossings_times(self) -> list:
@@ -346,6 +360,7 @@ class CleanedDataPlotter:
         plt.ylabel('Effective Area [cm$^2$]')
         plt.title(self.eff_area_file[:2]+'km/s')
         plt.legend()
+        plt.savefig('07_zeroCrossings.png')
         plt.show()
         
         self._avg_eff_area = np.array(avg_eff_area)
@@ -399,6 +414,7 @@ class CleanedDataPlotter:
             plt.ylabel('Effective Area [cm$^2$]')
             plt.title(self.eff_area_file[:2]+'km/s')
             plt.legend()
+            plt.savefig('08_streams.png')
             plt.show()
 
     
@@ -415,6 +431,7 @@ class CleanedDataPlotter:
         plt.ylabel(r'Flux [1/(m$^2\cdot$s)]')
         plt.yscale('log')
         plt.legend()
+        plt.savefig('09_flux.png')
         plt.show()
         
         
