@@ -29,6 +29,7 @@ class CleanedDataPlotter:
         self._remove_999_values()
         self._set_angles_and_velocities()
         self._plot_wehry(self._detector_sun_angles, self._velocities)
+        self._plot_rot(self.data_without_999)
         self._choose_beta_meteoroids()
         self._plot_wehry(self._beta_angles, self._beta_vel)
         self._effective_area()
@@ -41,6 +42,8 @@ class CleanedDataPlotter:
         self._minimum_effective_area_hist()
         self._set_new_angles_and_velocities()
         self._plot_wehry(self._new_detector_sun_angles, self._new_velocities)
+        self._plot_wehry_time_separated(self._new_detector_sun_angles, self._new_velocities)
+        self._plot_rot(self._new_data)
         self._compare_found_betas()
         self._plot_lat()
         self._calculate_zero_crossings_times()
@@ -97,19 +100,110 @@ class CleanedDataPlotter:
             velImpact = data[i, indices['velocity_index']]
             pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
             #vel = np.linalg.norm(-velSun+velRelative*posDetector)
+            """
+            LOOK FOR ERROR HERE
+            """
             vel = velUlysses-velImpact*pointingDetector
+            
             detector_sun_angles.append(-spice.vsep(vel, -posUlysses)*360/(2*np.pi)+180)
+            
+            vel = spice.reclat(vel)
+            vel = spice.latrec(vel[0], 0, 0)
+            
             velDust.append(np.linalg.norm(vel))
+        
         return detector_sun_angles, velDust
         
 
     def _plot_wehry(self, angles: list, velocities: list):       
         plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
-        plt.ylabel('Absolute Particle Velocity [km/s]')
+        plt.ylabel('Radial Particle Velocity [km/s]')
         plt.title(self.current_year)           
         plt.scatter(angles,velocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.show()
+        
+    def _plot_wehry_time_separated(self, angles: list, velocities: list):
+        jupiter_flyby_et = -2.47398962e+08
+        first_orbit_start_et = spice.str2et('1992-02-01')
+        first_orbit_end_et = spice.str2et('1995-08-01')
+        second_orbit_start_et = spice.str2et('1995-08-16')
+        second_orbit_end_et = spice.str2et('2001-10-19')
+        first_orbit_north_start_et = spice.str2et('1995-02-01')
+        first_orbit_north_end_et = spice.str2et('1995-08-01')
+        first_orbit_south_start_et = spice.str2et('1992-02-01')
+        first_orbit_south_end_et = spice.str2et('1995-02-01')
+        
+        angles = np.array(angles)
+        velocities = np.array(velocities)
+        
+        plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
+        plt.ylabel('Radial Particle Velocity [km/s]')
+        plt.title('Pre fly-by')
+        pltangles = angles[np.array(np.where(self.data[:,self._time_index] < jupiter_flyby_et))[0]]
+        pltvelocities = velocities[np.array(np.where(self.data[:,self._time_index] < jupiter_flyby_et))[0]]
+        plt.scatter(pltangles,pltvelocities)
+        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
+        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.show()
+        
+        plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
+        plt.ylabel('Radial Particle Velocity [km/s]')
+        plt.title('First orbit')
+        pltangles = angles[np.array(np.where((self.data[:,self._time_index] > first_orbit_start_et) & (self.data[:,self._time_index] < first_orbit_end_et)))[0]]
+        pltvelocities = velocities[np.array(np.where((self.data[:,self._time_index] > first_orbit_start_et) & (self.data[:,self._time_index] < first_orbit_end_et)))[0]]
+        plt.scatter(pltangles,pltvelocities)
+        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
+        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.show()
+        
+        plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
+        plt.ylabel('Radial Particle Velocity [km/s]')
+        plt.title('First orbit outside ecliptic')
+        pltangles = angles[np.array(np.where((self.data[:,self._time_index] > first_orbit_start_et) & (self.data[:,self._time_index] < first_orbit_end_et) & (np.abs(self.data[:,indices['LAT']]) >= 18)))[0]]
+        pltvelocities = velocities[np.array(np.where((self.data[:,self._time_index] > first_orbit_start_et) & (self.data[:,self._time_index] < first_orbit_end_et) & (np.abs(self.data[:,indices['LAT']]) >= 18)))[0]]
+        plt.scatter(pltangles,pltvelocities)
+        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
+        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.show()
+        
+        plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
+        plt.ylabel('Radial Particle Velocity [km/s]')
+        plt.title('Second orbit')
+        pltangles = angles[np.array(np.where((self.data[:,self._time_index] > second_orbit_start_et) & (self.data[:,self._time_index] < second_orbit_end_et)))[0]]
+        pltvelocities = velocities[np.array(np.where((self.data[:,self._time_index] > second_orbit_start_et) & (self.data[:,self._time_index] < second_orbit_end_et)))[0]]
+        plt.scatter(pltangles,pltvelocities)
+        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
+        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.show()
+        
+        plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
+        plt.ylabel('Radial Particle Velocity [km/s]')
+        plt.title('First orbit north')
+        pltangles = angles[np.array(np.where((self.data[:,self._time_index] > first_orbit_north_start_et) & (self.data[:,self._time_index] < first_orbit_north_end_et)))[0]]
+        pltvelocities = velocities[np.array(np.where((self.data[:,self._time_index] > first_orbit_north_start_et) & (self.data[:,self._time_index] < first_orbit_north_end_et)))[0]]
+        plt.scatter(pltangles,pltvelocities)
+        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
+        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.show()
+        
+        plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
+        plt.ylabel('Radial Particle Velocity [km/s]')
+        plt.title('First orbit south')
+        pltangles = angles[np.array(np.where((self.data[:,self._time_index] > first_orbit_south_start_et) & (self.data[:,self._time_index] < first_orbit_south_end_et)))[0]]
+        pltvelocities = velocities[np.array(np.where((self.data[:,self._time_index] > first_orbit_south_start_et) & (self.data[:,self._time_index] < first_orbit_south_end_et)))[0]]
+        plt.scatter(pltangles,pltvelocities)
+        plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
+        plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.show()
+        
+        
+        
+    def _plot_rot(self, data):
+        plt.xlabel('Time')
+        plt.ylabel('Rotation angle [°]')        
+        plt.scatter(data[:,self._time_index]/self.one_year_et+2000, data[:,indices['rotation_angle_index']])
         plt.show() 
 
     def _choose_beta_meteoroids(self) -> list:
@@ -156,7 +250,6 @@ class CleanedDataPlotter:
         for i, data in  enumerate(self.data_without_999):
             #A minimum requirement for beta particles is a certain minimum velocity and maximum detector_sun_angle
             condition_wehry = self._detector_sun_angles[i] <= self._wehry_angle and self._velocities[i] >= self._wehry_velocity
-            
             #Particles are classified ISD if they come from a certain direction, have a certain minimum velocity and a certain minimum mass
             """
             Falsches Bezugssystem winkel und geschwindigkeit und statt +-30 degrees lat und lon 30 degrees insgesamt
@@ -176,6 +269,7 @@ class CleanedDataPlotter:
                     condition_not_streams = False
             
             #Particles are considered beta if they pass the minimum requirement and are not ISD or jupiter stream particles
+            condition_wehry = True
             condition = condition_wehry and condition_not_streams and condition_not_interstellar
             if condition:
                 beta_meteoroids.append(True)
@@ -218,11 +312,12 @@ class CleanedDataPlotter:
             
             
             for i in range(len(self._new_data)):
-                idx = find_nearest_idx(beta_data[:,0], mass[i])
-                [state, ltime] = spice.spkezr('ULYSSES',  self._new_data[i,self._time_index],      'ECLIPJ2000', 'NONE', 'SUN')
-                beta = beta_data[idx,1]
-                elts = spice.oscelt(state, self._new_data[i,self._time_index], (1-beta)*GM_km3_per_s2)
-                peri.append(elts[0]/au_in_km)
+                if np.abs(self._new_data[i,indices['LAT']]) > 10:
+                    idx = find_nearest_idx(beta_data[:,0], mass[i])
+                    [state, ltime] = spice.spkezr('ULYSSES',  self._new_data[i,self._time_index],      'ECLIPJ2000', 'NONE', 'SUN')
+                    beta = beta_data[idx,1]
+                    elts = spice.oscelt(state, self._new_data[i,self._time_index], (1-beta)*GM_km3_per_s2)
+                    peri.append(elts[0]/au_in_km)
             
             plt.xlabel('Perihelion distance [au]')
             plt.ylabel('Count')
@@ -303,6 +398,7 @@ class CleanedDataPlotter:
         zero_crossings = np.where(np.diff(np.signbit(self.raw_data[:,indices['LAT']])))[0]
         zero_crossings_times = self.raw_data[zero_crossings, self._time_index]
         self._zero_crossings_times = zero_crossings_times
+        print(zero_crossings_times)
         
     def _effective_area_with_lat(self):
         zero_crossings_times_in_epoch = self._zero_crossings_times/self.one_year_et+2000

@@ -14,7 +14,7 @@ one_year_et = spice.str2et('01-001T00:00')-spice.str2et('00-001T00:00')
 first_data_column = 3
 last_data_column = 34
 
-min_quality_flag = 2
+min_quality_flag = 0
 all_lines = True
 
 wehry_comparison = False
@@ -62,18 +62,21 @@ wehry_data = ulysses_data[wehry_beta_particle_indices,:]
 
 LinesPlotter = CleanedDataPlotter()
 
+LinesPlotter.data = ulysses_data
+if wehry_comparison:
+    LinesPlotter.data = wehry_data
+    
+LinesPlotter.data = wehry_data
+
 if all_lines:
     start_index = 0
-    end_index = len(ulysses_data)
+    end_index = len(LinesPlotter.data)
 else:
     start_et = spice.str2et('90-001T00:00')
     end_et = start_et+one_year_et
     start_index = np.argmin(np.abs(time-start_et))
     end_index = np.argmin(np.abs(time-end_et))
 
-LinesPlotter.data = ulysses_data
-if wehry_comparison:
-    LinesPlotter.data = wehry_data
 LinesPlotter.raw_data = ulysses_data
 LinesPlotter.start_index = start_index
 LinesPlotter.end_index = end_index
