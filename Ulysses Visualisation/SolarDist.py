@@ -58,6 +58,9 @@ wehry_beta_particle_indices = [4,6,8,18,19,29,31,34,35,36,38,43,48,49,59,61,66,7
 
 wehry_beta_particle_indices = np.array(wehry_beta_particle_indices)-1
 
+#wehry_beta_particle_indices = np.array([1410,1412,1421,1422,1427,1428,1429,1431,1433,1436,1438,1440,1442,1449,1450,1452,1455,1465])-1
+
+
 wehry_data = ulysses_data[wehry_beta_particle_indices,:]
 
 LinesPlotter = CleanedDataPlotter()
@@ -66,7 +69,7 @@ LinesPlotter.data = ulysses_data
 if wehry_comparison:
     LinesPlotter.data = wehry_data
     
-LinesPlotter.data = wehry_data
+#LinesPlotter.data = wehry_data
 
 if all_lines:
     start_index = 0

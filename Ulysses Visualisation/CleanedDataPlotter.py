@@ -42,7 +42,7 @@ class CleanedDataPlotter:
         self._minimum_effective_area_hist()
         self._set_new_angles_and_velocities()
         self._plot_wehry(self._new_detector_sun_angles, self._new_velocities)
-        self._plot_wehry_time_separated(self._new_detector_sun_angles, self._new_velocities)
+        #self._plot_wehry_time_separated(self._new_detector_sun_angles, self._new_velocities)
         self._plot_rot(self._new_data)
         self._compare_found_betas()
         self._plot_lat()
@@ -91,13 +91,23 @@ class CleanedDataPlotter:
         velDust = []
         et = data[:, self._time_index]
         for i in range(len(data[:,0])):
-            [stateSun, ltime] = spice.spkezr('SUN',  et[i],      'ECLIPJ2000', 'NONE', 'ULYSSES')
+            #[stateSun, ltime] = spice.spkezr('SUN',  et[i],      'ECLIPJ2000', 'NONE', 'ULYSSES')
             [stateUlysses, ltime] = spice.spkezr('ULYSSES',  et[i],      'ECLIPJ2000', 'NONE', 'SUN')
-            posSun = stateSun[:3]
-            velSun = stateSun[3:]
+            #posSun = stateSun[:3]
+            #velSun = stateSun[3:]
             posUlysses = stateUlysses[:3]
             velUlysses = stateUlysses[3:]
+            
+            #posUlysses = spice.reclat(posUlysses)
+            #velUlysses = spice.reclat(velUlysses)
+            #print(posUlysses[2]*360/2/np.pi, velUlysses[2]*360/2/np.pi)
+            #posUlysses = spice.latrec(posUlysses[0], posUlysses[1], -posUlysses[2])
+            #velUlysses = spice.latrec(velUlysses[0], velUlysses[1], -velUlysses[2])
+            
+            
+            
             velImpact = data[i, indices['velocity_index']]
+            
             pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
             #vel = np.linalg.norm(-velSun+velRelative*posDetector)
             """
@@ -105,8 +115,17 @@ class CleanedDataPlotter:
             """
             vel = velUlysses-velImpact*pointingDetector
             
-            detector_sun_angles.append(-spice.vsep(vel, -posUlysses)*360/(2*np.pi)+180)
+            angle0 = spice.vsep(vel, posUlysses)*360/(2*np.pi)
+            angle1 = spice.vsep(vel, -posUlysses)*360/(2*np.pi)
             
+            if angle0 <= angle1:
+                detector_sun_angles.append(angle0)
+            else:
+                detector_sun_angles.append(angle1)
+            
+            """
+            THIS DOES NOT DO WHAT YOU THINK IT DOES. THE FIRST COMPONENT IS NOT THE RADIAL COMPONENT BUT THE LENGTH. CHANGE IT.
+            """
             vel = spice.reclat(vel)
             vel = spice.latrec(vel[0], 0, 0)
             
@@ -146,6 +165,8 @@ class CleanedDataPlotter:
         plt.scatter(pltangles,pltvelocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.xlim(0,120)
+        plt.ylim(0,100)
         plt.show()
         
         plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
@@ -156,6 +177,8 @@ class CleanedDataPlotter:
         plt.scatter(pltangles,pltvelocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.xlim(0,200)
+        plt.ylim(0,100)
         plt.show()
         
         plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
@@ -166,6 +189,8 @@ class CleanedDataPlotter:
         plt.scatter(pltangles,pltvelocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.xlim(0,200)
+        plt.ylim(0,100)
         plt.show()
         
         plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
@@ -176,6 +201,8 @@ class CleanedDataPlotter:
         plt.scatter(pltangles,pltvelocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.xlim(0,200)
+        plt.ylim(0,80)
         plt.show()
         
         plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
@@ -186,6 +213,8 @@ class CleanedDataPlotter:
         plt.scatter(pltangles,pltvelocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.xlim(0,100)
+        plt.ylim(0,100)
         plt.show()
         
         plt.xlabel('Angle between dust flow and sun in solar reference frame [°]')
@@ -196,6 +225,8 @@ class CleanedDataPlotter:
         plt.scatter(pltangles,pltvelocities)
         plt.plot(self._detector_sun_angles, np.ones(len(self._detector_sun_angles))*self._wehry_velocity, color = 'red')
         plt.plot(np.ones(len(self._detector_sun_angles))*self._wehry_angle, self._velocities, color = 'red')
+        plt.xlim(0,200)
+        plt.ylim(0,100)
         plt.show()
         
         
@@ -251,15 +282,13 @@ class CleanedDataPlotter:
             #A minimum requirement for beta particles is a certain minimum velocity and maximum detector_sun_angle
             condition_wehry = self._detector_sun_angles[i] <= self._wehry_angle and self._velocities[i] >= self._wehry_velocity
             #Particles are classified ISD if they come from a certain direction, have a certain minimum velocity and a certain minimum mass
-            """
-            Falsches Bezugssystem winkel und geschwindigkeit und statt +-30 degrees lat und lon 30 degrees insgesamt
-            """
             condition_interstellar_angle = detector_ISD_angles[i] < self._tolerance
             condition_interstellar_vel = velDust[i] > self._interstellar_min_vel
             """
             Lennart anschreiben fuer siene IDentifikation
             """
             condition_interstellar_mass = mass[i] > self._interstellar_min_mass
+            condition_interstellar_mass = True
             condition_not_interstellar = not (condition_interstellar_angle and condition_interstellar_vel and condition_interstellar_mass)
             
             #Particles are considered as jupiter steam particles if they were detected within Strub's jupiter stream times
@@ -269,7 +298,7 @@ class CleanedDataPlotter:
                     condition_not_streams = False
             
             #Particles are considered beta if they pass the minimum requirement and are not ISD or jupiter stream particles
-            condition_wehry = True
+            #condition_wehry = True
             condition = condition_wehry and condition_not_streams and condition_not_interstellar
             if condition:
                 beta_meteoroids.append(True)
@@ -391,6 +420,11 @@ class CleanedDataPlotter:
         plt.xlabel('Time')
         plt.ylabel('Ulysses Ecliptic Latitude [°]')
         plt.legend()
+        plt.show()
+        
+        plt.plot(self.raw_data[:, self._time_index]/self.one_year_et+2000, self.raw_data[:, self._dist_index])
+        plt.xlabel('Time')
+        plt.ylabel('Ulysses Solar Distance [au]')
         plt.show()
 
     def _calculate_zero_crossings_times(self) -> list:
@@ -585,7 +619,7 @@ class CleanedDataPlotter:
         """
         try different tolerances
         """
-        self._tolerance = 30
+        self._tolerance = 70
         self._interstellar_min_vel = 14
         self._interstellar_min_mass = 2.5e-14
         self._wehry_beta_particle_indices = [4,6,8,18,19,29,31,34,35,36,38,43,48,49,59,61,66,72,74,76,80,83,86,94,1032,1080,1145,1165,1410,1412,1421,1422,1427,1428,1429,1431,1433,1436,1438,1440,1442,1449,1450,1452,1455,1465,1984,2001,2003,2010,2012,2024,2034,2035,2048,2049,2051,2052,2053,2054,2055,2060]

@@ -74,6 +74,7 @@ sensitivity_value = np.concatenate((np.flip(sensitivityRAW[1:,1]),sensitivityRAW
 
 sensitivity = np.array([sensitivity_angle, sensitivity_value])
 
+"""
 plt.ylabel(r'Area [cm$^2$]')
 plt.xlabel('Angle [°]')
 plt.title('Sensitivity function')
@@ -112,27 +113,47 @@ plt.show()
 #convolution = sensitivity[1]
 #conv_plt_angle = sensitivity[0]
 
+plt.ylabel(r'Area [cm$^2$]')
+plt.xlabel('Angle [°]')
+plt.title('Convolved sensitivity function')
+#plt.plot(conv_plt_angle+extra_angle, convolution)
+plt.plot(conv_plt_angle, convolution)
+plt.show()
+"""
+
 wehry = np.loadtxt('DefaultDataset.csv', delimiter = ',')
 
-velocity_dust = 20
+velocity_dust = 30
 for i in range(1):
 
-    velocity_dust = 20+10*i
+    velocity_dust = 30+10*i
     
     angle = []
     factor = []
     for et in time:
         [stateUlysses, ltime] = spice.spkezr('ULYSSES',  et,      'ECLIPJ2000', 'NONE', 'SUN')
-        #[stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'ECLIPJ2000', 'NONE', 'SUN')
+        [stateEarth, ltime] = spice.spkezr('EARTH BARYCENTER',  et,      'ECLIPJ2000', 'NONE', 'SUN')
         velUlysses = stateUlysses[3:]
-        #posEarth = stateEarth[:3]
+        posEarth = stateEarth[:3]
         posUlysses = stateUlysses[:3]
         dustVel = velocity_dust*posUlysses/(np.linalg.norm(posUlysses))
         relVel = velUlysses-dustVel
-        pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
+        #pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
         factor.append(np.abs(np.linalg.norm(relVel)/np.linalg.norm(dustVel)))
         #angle.append(spice.vsep(velUlysses+dustVel, posEarth-posUlysses))
-        angle.append(spice.vsep(-(velUlysses+dustVel), pointingDetector))
+        #angle.append(spice.vsep(-velUlysses+dustVel, pointingDetector))
+        
+        #angle0 = spice.vsep(-velUlysses+dustVel, pointingDetector)
+        #angle1 = spice.vsep(-velUlysses+dustVel, -pointingDetector)
+        
+        angle0 = spice.vsep(-velUlysses+dustVel, posEarth-posUlysses)
+        angle1 = spice.vsep(-velUlysses+dustVel, -posEarth+posUlysses)
+        
+        if np.abs(angle0-extra_angle) <= np.abs(angle1-extra_angle):
+            angle.append(angle0)
+        else:
+            angle.append(angle1)
+        
         #angle.append(-spice.vsep(-(velUlysses+dustVel), pointingDetector)+np.pi)
         
         
@@ -143,18 +164,37 @@ for i in range(1):
     pltangle = angle*360/(2*np.pi)
     plttime = time/one_year_et+2000
     
+    """
     plt.title('Angle between Earth-Ulysses Position Vector and Sun-Ulysses Velocity Vector + ' + str(velocity_dust) + 'km/s from Sun direction')
     plt.ylabel('Angle [°]')
     plt.xlabel('Time')
     plt.plot(plttime, pltangle)
     plt.show()
+    """
     
+    
+    wehry_sensitivity = np.loadtxt('wehry_sensitivity.csv', delimiter = ',')
     
     eff_area = []
     for i in range(len(pltangle)):
         #index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
-        index = find_nearest_idx(conv_plt_angle, extra_angle-pltangle[i])
-        eff_area.append(convolution[index])
+        #index = find_nearest_idx(conv_plt_angle, extra_angle-pltangle[i])
+        
+        
+        
+        #index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
+        index = find_nearest_idx(wehry_sensitivity[:,0], pltangle[i])
+        
+        
+        #index = find_nearest_idx(sensitivity[0,:], pltangle[i])
+        
+        
+        
+        #eff_area.append(convolution[index])
+        eff_area.append(wehry_sensitivity[index,1]*10000)
+        
+        
+        #eff_area.append(sensitivity[1,index])
     
     
     plt.title(str(velocity_dust) + 'km/s')
@@ -177,12 +217,15 @@ for i in range(1):
     plt.legend()
     plt.show()
     
+    """    
     with open(str(velocity_dust)+'.dat', 'w') as f:
         for i in range(len(eff_area)):
             f.write(str(plttime[i]) + ', ' + str(eff_area[i]) + '\n')
-    
+
+
     plt.title(str(velocity_dust) + 'km/s')
     plt.plot(plttime, factor)
     plt.xlabel('Time')
     plt.ylabel('Velocity factor')
     plt.show()
+    """
