@@ -217,7 +217,7 @@ for i in range(1):
     plt.legend()
     plt.show()
     
-    """    
+    
     with open(str(velocity_dust)+'.dat', 'w') as f:
         for i in range(len(eff_area)):
             f.write(str(plttime[i]) + ', ' + str(eff_area[i]) + '\n')
@@ -228,4 +228,4 @@ for i in range(1):
     plt.xlabel('Time')
     plt.ylabel('Velocity factor')
     plt.show()
-    """
+    

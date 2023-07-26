@@ -54,11 +54,15 @@ class CleanedDataPlotter:
 
     def _remove_999_values(self):
         ulysses_data_without_999 = []
+        ulysses_data_only_999 = []
         for i in range(self.start_index, self.end_index):
             condition = self.data[i, self.rotation_angle_index] != 999 and self.data[i, self.quality_flag_index] >= self.min_quality_flag
             if condition:
                 ulysses_data_without_999.append(self.data[i])
+            else:
+                ulysses_data_only_999.append(self.data[i])
         self.data_without_999 = np.array(ulysses_data_without_999)
+        self.data_only_999 = np.array(ulysses_data_only_999)
 
     def _set_angles_and_velocities(self):
         self._detector_sun_angles, self._velocities = self._calculate_angle_and_velocities_between_two_objects(self.data_without_999)
@@ -89,6 +93,7 @@ class CleanedDataPlotter:
         lat = data[:, indices['solar_lat_index']]
         detector_sun_angles = []
         velDust = []
+        velUlysses0 = []
         et = data[:, self._time_index]
         for i in range(len(data[:,0])):
             #[stateSun, ltime] = spice.spkezr('SUN',  et[i],      'ECLIPJ2000', 'NONE', 'ULYSSES')
@@ -97,6 +102,7 @@ class CleanedDataPlotter:
             #velSun = stateSun[3:]
             posUlysses = stateUlysses[:3]
             velUlysses = stateUlysses[3:]
+            velUlysses0.append(np.linalg.norm(velUlysses))
             
             #posUlysses = spice.reclat(posUlysses)
             #velUlysses = spice.reclat(velUlysses)
@@ -117,6 +123,7 @@ class CleanedDataPlotter:
             
             angle0 = spice.vsep(vel, posUlysses)*360/(2*np.pi)
             angle1 = spice.vsep(vel, -posUlysses)*360/(2*np.pi)
+            angle1 = angle0
             
             if angle0 <= angle1:
                 detector_sun_angles.append(angle0)
@@ -130,6 +137,15 @@ class CleanedDataPlotter:
             vel = spice.latrec(vel[0], 0, 0)
             
             velDust.append(np.linalg.norm(vel))
+        
+        if self._temp:
+            with open('wehryTest.dat', 'w') as f:
+                for i in detector_sun_angles:
+                    f.write(str(i) + '\n')
+            self._temp = False
+        
+        plt.plot(et/self.one_year_et+2000, velUlysses0)
+        plt.show()
         
         return detector_sun_angles, velDust
         
@@ -278,11 +294,98 @@ class CleanedDataPlotter:
         plt.ylabel('Angle between dust velocity and ISD [°]')
         plt.show()
         
+        detector_ISD_angles = np.array(detector_ISD_angles)
+        velDust = np.array(velDust)
+        mass = np.array(mass)
+        
+        condition_23 = []
+        condition_01 = []
+        for i in range(len(mass)):
+            condition_23.append(self.data_without_999[i, indices['quality_flag_index']] > 1.5)
+            condition_01.append(self.data_without_999[i, indices['quality_flag_index']] < 1.5)
+            
+        condition_23 = np.array(condition_23)
+        conditiion_01 = np.array(condition_01)
+        
+        plt.hist(detector_ISD_angles[condition_23]-180, label = '2&3')
+        plt.hist(detector_ISD_angles[condition_01]-180, label = '0&1', alpha = 0.5)
+        plt.ylabel('Count')
+        plt.xlabel('Angle between dust velocity and ISD [°]')
+        plt.title('No ROT = 999')
+        plt.legend()
+        plt.show()
+        
+        condition_23 = []
+        condition_01 = []
+        for i in range(len(mass)):
+            condition_23.append(velDust[i] > self._interstellar_min_vel and mass[i] > self._interstellar_min_mass and self.data_without_999[i, indices['quality_flag_index']] > 1.5)
+            condition_01.append(velDust[i] > self._interstellar_min_vel and mass[i] > self._interstellar_min_mass and self.data_without_999[i, indices['quality_flag_index']] < 1.5)
+            
+        condition_23 = np.array(condition_23)
+        conditiion_01 = np.array(condition_01)
+        
+        plt.hist(detector_ISD_angles[condition_23]-180, label = '2&3')
+        plt.hist(detector_ISD_angles[condition_01]-180, label = '0&1', alpha = 0.5)
+        plt.ylabel('Count')
+        plt.xlabel('Angle between dust velocity and ISD [°]')
+        plt.title('ISD min mass and min velocity filtering')
+        plt.legend()
+        plt.show()
+        
+        condition_23 = []
+        condition_01 = []
+        for i in range(len(mass)):
+            condition_23.append(velDust[i] > self._interstellar_min_vel and velDust[i] < self._interstellar_max_vel and mass[i] > self._interstellar_min_mass and mass[i] < self._interstellar_max_mass and self.data_without_999[i, indices['quality_flag_index']] > 1.5)
+            condition_01.append(velDust[i] > self._interstellar_min_vel and velDust[i] < self._interstellar_max_vel and mass[i] > self._interstellar_min_mass and mass[i] < self._interstellar_max_mass and self.data_without_999[i, indices['quality_flag_index']] < 1.5)
+            
+        condition_23 = np.array(condition_23)
+        conditiion_01 = np.array(condition_01)
+        
+        plt.hist(detector_ISD_angles[condition_23]-180, label = '2&3')
+        plt.hist(detector_ISD_angles[condition_01]-180, label = '0&1', alpha = 0.5)
+        plt.ylabel('Count')
+        plt.xlabel('Angle between dust velocity and ISD [°]')
+        plt.title('ISD min/max mass and min/max velocity filtering')
+        plt.legend()
+        plt.show()
+        
+        condition_23 = []
+        condition_01 = []
+        for i in range(len(mass)):
+            condition_not_streams = True
+            for interval in streams:
+                if et[i] >= interval[0] and et[i] <= interval[1]:
+                    condition_not_streams = False
+            if condition_not_streams:
+                condition_23.append(velDust[i] > self._interstellar_min_vel and velDust[i] < self._interstellar_max_vel and mass[i] > self._interstellar_min_mass and mass[i] < self._interstellar_max_mass and self.data_without_999[i, indices['quality_flag_index']] > 1.5)
+                condition_01.append(velDust[i] > self._interstellar_min_vel and velDust[i] < self._interstellar_max_vel and mass[i] > self._interstellar_min_mass and mass[i] < self._interstellar_max_mass and self.data_without_999[i, indices['quality_flag_index']] < 1.5)
+            else:
+                condition_23.append(False)
+                condition_01.append(False)
+            
+        condition_23 = np.array(condition_23)
+        conditiion_01 = np.array(condition_01)
+        
+        plt.hist(detector_ISD_angles[condition_23]-180, label = '2&3')
+        plt.hist(detector_ISD_angles[condition_01]-180, label = '0&1', alpha = 0.5)
+        plt.ylabel('Count')
+        plt.xlabel('Angle between dust velocity and ISD [°]')
+        plt.title('ISD min/max mass and min/max velocity and streams filtering')
+        plt.legend()
+        plt.show()
+        
+        plt.hist(self.data_without_999[np.where(self.data_without_999[:, indices['quality_flag_index']] > 1.5),indices['rotation_angle_index']][0], label = '2&3')
+        plt.hist(self.data_without_999[np.where(self.data_without_999[:, indices['quality_flag_index']] < 1.5),indices['rotation_angle_index']][0], label = '0&1', alpha = 0.5)
+        plt.ylabel('Count')
+        plt.xlabel('Rotation Angle [°]')
+        plt.legend()
+        plt.show()
+        
         for i, data in  enumerate(self.data_without_999):
             #A minimum requirement for beta particles is a certain minimum velocity and maximum detector_sun_angle
             condition_wehry = self._detector_sun_angles[i] <= self._wehry_angle and self._velocities[i] >= self._wehry_velocity
             #Particles are classified ISD if they come from a certain direction, have a certain minimum velocity and a certain minimum mass
-            condition_interstellar_angle = detector_ISD_angles[i] < self._tolerance
+            condition_interstellar_angle = detector_ISD_angles[i] > 180 + self._tolerance
             condition_interstellar_vel = velDust[i] > self._interstellar_min_vel
             """
             Lennart anschreiben fuer siene IDentifikation
@@ -336,7 +439,7 @@ class CleanedDataPlotter:
         for I in range(1,2):
             self._correct_by_effective_area(min_eff_area=self.min_eff_area_factor*I)
             
-            beta_data = np.loadtxt('silicate0.00.txt', usecols = (1,2), skiprows = 1, delimiter = ' ')
+            beta_data = np.loadtxt('silicate0.93.txt', usecols = (1,2), skiprows = 1, delimiter = ' ')
             mass = self._new_data[:,indices['mass_index']]/1000
             
             
@@ -347,6 +450,21 @@ class CleanedDataPlotter:
                     beta = beta_data[idx,1]
                     elts = spice.oscelt(state, self._new_data[i,self._time_index], (1-beta)*GM_km3_per_s2)
                     peri.append(elts[0]/au_in_km)
+            
+            beta_plot = []
+            lat_plot = []
+            mass_plot = []
+            for i in range(len(self._new_data)):
+                idx = find_nearest_idx(beta_data[:,0], mass[i])
+                beta = beta_data[idx,1]
+                beta_plot.append(beta)
+                lat_plot.append(self._new_data[i,indices['LAT']])
+                mass_plot.append(mass[i])
+                
+            plt.scatter(lat_plot, beta_plot)
+            plt.show()
+            plt.scatter(lat_plot, mass_plot)
+            plt.show()
             
             plt.xlabel('Perihelion distance [au]')
             plt.ylabel('Count')
@@ -417,6 +535,14 @@ class CleanedDataPlotter:
         plt.scatter(self._new_data[:, self._time_index]/self.one_year_et+2000, self._new_data[:,indices['LAT']], label = 'beta', marker = 'x')
         plt.scatter(self.data[:, self._time_index]/self.one_year_et+2000, self.data[:,indices['LAT']], label = 'all', alpha = 0.5, marker = '.')
         plt.plot(self._new_data[:, self._time_index]/self.one_year_et+2000, np.zeros(len(self._new_data[:, self._time_index])), color = 'red')
+        plt.xlabel('Time')
+        plt.ylabel('Ulysses Ecliptic Latitude [°]')
+        plt.legend()
+        plt.show()
+        
+        plt.scatter(self.data_only_999[:, self._time_index]/self.one_year_et+2000, self.data_only_999[:,indices['LAT']], label = 'rot = 999', marker = 'x')
+        plt.scatter(self.data_without_999[:, self._time_index]/self.one_year_et+2000, self.data_without_999[:,indices['LAT']], label = 'no rot = 999', alpha = 0.5, marker = '.')
+        plt.plot(self.data[:, self._time_index]/self.one_year_et+2000, np.zeros(len(self.data[:, self._time_index])), color = 'red')
         plt.xlabel('Time')
         plt.ylabel('Ulysses Ecliptic Latitude [°]')
         plt.legend()
@@ -603,6 +729,8 @@ class CleanedDataPlotter:
     
 
     def __init__(self):
+        self._temp = True
+        
         self.current_year = None
         
         self._time_index = 0
@@ -621,7 +749,9 @@ class CleanedDataPlotter:
         """
         self._tolerance = 70
         self._interstellar_min_vel = 14
+        self._interstellar_max_vel = 38
         self._interstellar_min_mass = 2.5e-14
+        self._interstellar_max_mass = 1e-12
         self._wehry_beta_particle_indices = [4,6,8,18,19,29,31,34,35,36,38,43,48,49,59,61,66,72,74,76,80,83,86,94,1032,1080,1145,1165,1410,1412,1421,1422,1427,1428,1429,1431,1433,1436,1438,1440,1442,1449,1450,1452,1455,1465,1984,2001,2003,2010,2012,2024,2034,2035,2048,2049,2051,2052,2053,2054,2055,2060]
 
         
