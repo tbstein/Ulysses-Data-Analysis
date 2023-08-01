@@ -1,0 +1,7 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Stein"
+  given-names: "Tobias"
+title: "Ulysses Data Analysis"
+url: "https://gitlab.gwdg.de/tobias.stein01/ulysses-data-analysis"
