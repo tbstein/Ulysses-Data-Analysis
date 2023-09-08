@@ -471,6 +471,16 @@ class CleanedDataPlotter:
         plt.ylabel('Ulysses Ecliptic Latitude [°]')
         plt.legend()
         plt.show()
+        
+        first_zero_crossing = 376
+        plt.scatter(self.data[first_zero_crossing:, self._time_index]/self.one_year_et+2000, 2*np.arctan(1/self.data[first_zero_crossing:,self._dist_index])*180/np.pi, marker = '.')
+        plt.xlabel('Time')
+        plt.ylabel('Apparent Size of the Zodiacal Cloud [°]')
+        plt.savefig('zodiacsize.pdf')
+        plt.show()
+        with open('zodiac.dat', 'w') as f:
+            for i in range(first_zero_crossing,len(self.data[:, self._time_index])):
+                f.write(str(self.data[i, self._time_index]/self.one_year_et+2000)+','+str(2*np.arctan(1/self.data[i,self._dist_index])*180/np.pi)+'\n')
 
     def _calculate_zero_crossings_times(self) -> list:
         #https://stackoverflow.com/questions/3843017/efficiently-detect-sign-changes-in-python

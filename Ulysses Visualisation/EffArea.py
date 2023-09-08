@@ -74,23 +74,25 @@ sensitivity_value = np.concatenate((np.flip(sensitivityRAW[1:,1]),sensitivityRAW
 
 sensitivity = np.array([sensitivity_angle, sensitivity_value])
 
-"""
+
 plt.ylabel(r'Area [cm$^2$]')
 plt.xlabel('Angle [°]')
 plt.title('Sensitivity function')
 plt.plot(sensitivity[0,:], sensitivity[1,:])
+plt.savefig('sensitivity.pdf')
 plt.show()
 
 uniformDist = []
 for angle in sensitivity[0]:
     #uniformDist.append(uniform(angle-extra_angle))
-    uniformDist.append(uniform(angle))
+    uniformDist.append(uniform(angle, interval = (-24,24)))
 uniformDist = np.array(uniformDist)
 
 plt.xlabel("Angle [°]")
 plt.ylabel("Normalized Value")
 plt.title("Uniform distribution")
 plt.plot(sensitivity[0], uniformDist)
+plt.savefig('uniform.pdf')
 plt.show()
 
 temp = avg_eff_area(sensitivity[1], sensitivity[0], extra_angle)
@@ -98,6 +100,7 @@ plt.title('Rotation averaged sensitivity function')
 plt.ylabel(r'Area [cm$^2$]')
 plt.xlabel('Angle [°]')
 plt.plot(np.linspace(-95, 95, num = len(temp)), temp)
+plt.savefig('rotationavg.pdf')
 plt.show()
 
 
@@ -108,18 +111,12 @@ plt.xlabel('Angle [°]')
 plt.title('Convolved sensitivity function')
 #plt.plot(conv_plt_angle+extra_angle, convolution)
 plt.plot(conv_plt_angle, convolution)
+plt.savefig('convolved.pdf')
 plt.show()
 
 #convolution = sensitivity[1]
 #conv_plt_angle = sensitivity[0]
 
-plt.ylabel(r'Area [cm$^2$]')
-plt.xlabel('Angle [°]')
-plt.title('Convolved sensitivity function')
-#plt.plot(conv_plt_angle+extra_angle, convolution)
-plt.plot(conv_plt_angle, convolution)
-plt.show()
-"""
 
 wehry = np.loadtxt('DefaultDataset.csv', delimiter = ',')
 
@@ -138,7 +135,7 @@ for i in range(1):
         posUlysses = stateUlysses[:3]
         dustVel = velocity_dust*posUlysses/(np.linalg.norm(posUlysses))
         relVel = velUlysses-dustVel
-        #pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
+        pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
         factor.append(np.abs(np.linalg.norm(relVel)/np.linalg.norm(dustVel)))
         #angle.append(spice.vsep(velUlysses+dustVel, posEarth-posUlysses))
         #angle.append(spice.vsep(-velUlysses+dustVel, pointingDetector))
@@ -148,6 +145,7 @@ for i in range(1):
         
         angle0 = spice.vsep(-velUlysses+dustVel, posEarth-posUlysses)
         angle1 = spice.vsep(-velUlysses+dustVel, -posEarth+posUlysses)
+        angle1 = angle0
         
         if np.abs(angle0-extra_angle) <= np.abs(angle1-extra_angle):
             angle.append(angle0)
@@ -164,13 +162,15 @@ for i in range(1):
     pltangle = angle*360/(2*np.pi)
     plttime = time/one_year_et+2000
     
-    """
-    plt.title('Angle between Earth-Ulysses Position Vector and Sun-Ulysses Velocity Vector + ' + str(velocity_dust) + 'km/s from Sun direction')
+    
+    #plt.title('Angle between Earth-Ulysses Position Vector and Sun-Ulysses Velocity Vector + ' + str(velocity_dust) + 'km/s from Sun direction')
+    plt.title('Angle between Ulysses rotation axis and beta meteoroid flux')
     plt.ylabel('Angle [°]')
     plt.xlabel('Time')
     plt.plot(plttime, pltangle)
+    plt.savefig('angles.pdf')
     plt.show()
-    """
+    
     
     
     wehry_sensitivity = np.loadtxt('wehry_sensitivity.csv', delimiter = ',')
@@ -182,16 +182,16 @@ for i in range(1):
         
         
         
-        #index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
-        index = find_nearest_idx(wehry_sensitivity[:,0], pltangle[i])
+        index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
+        #index = find_nearest_idx(wehry_sensitivity[:,0], pltangle[i])
         
         
         #index = find_nearest_idx(sensitivity[0,:], pltangle[i])
         
         
         
-        #eff_area.append(convolution[index])
-        eff_area.append(wehry_sensitivity[index,1]*10000)
+        eff_area.append(convolution[index])
+        #eff_area.append(wehry_sensitivity[index,1]*10000)
         
         
         #eff_area.append(sensitivity[1,index])
@@ -203,6 +203,7 @@ for i in range(1):
     plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red')
     plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue')
     plt.legend()
+    plt.savefig('raweffarea.pdf')
     plt.show()
     
     eff_area = np.array(eff_area)*factor
@@ -215,7 +216,10 @@ for i in range(1):
     plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red')
     plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue')
     plt.legend()
+    plt.savefig('correffarea30.pdf')
     plt.show()
+    
+    
     
     
     with open(str(velocity_dust)+'.dat', 'w') as f:
@@ -227,5 +231,7 @@ for i in range(1):
     plt.plot(plttime, factor)
     plt.xlabel('Time')
     plt.ylabel('Velocity factor')
+    plt.savefig('factor.pdf')
     plt.show()
+    
     
