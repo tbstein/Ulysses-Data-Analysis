@@ -17,19 +17,21 @@ def avg_eff_area(eff_area: list, eff_area_angle: list, extra_angle: float) -> li
     avg = []
     N = 360
     two_pi = np.linspace(0, 2*np.pi, num = N) #Rotation angle
-    detector_earth_angles = np.linspace(95, 0, num = 95)
-    detector_earth_angles = np.concatenate((detector_earth_angles, np.flip(detector_earth_angles)))
-    for i, phi in enumerate(detector_earth_angles):
+    #detector_earth_angles = np.linspace(0, 95, num = 95)
+    #detector_earth_angles = np.concatenate((detector_earth_angles, np.flip(detector_earth_angles)))
+    detector_meteoroid_angles = np.linspace(0, extra_angle, num = extra_angle)
+    detector_meteoroid_angles = np.concatenate((detector_meteoroid_angles, np.flip(detector_meteoroid_angles)))
+    for i, phi in enumerate(detector_meteoroid_angles):
         A = 0
         for n, theta in enumerate(two_pi):
-            dot_product = np.arccos(np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta))
+            dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
             norm = np.sqrt(1+np.tan(extra_angle/180*np.pi)**2)
-            angle = dot_product/norm
+            angle = np.arccos(dot_product/norm)/np.pi*180
             #index = find_nearest_idx(eff_area_angle, -2*detector_earth_angles[i]*np.cos(theta)+extra_angle+detector_earth_angles[i])
             index = find_nearest_idx(eff_area_angle, angle)
             #A += eff_area[index]/N*2*np.pi
             A += eff_area[index]/N
-        avg.append(A/2/np.pi)
+        avg.append(A)
     avg = np.array(avg)
     return avg
 
@@ -101,7 +103,7 @@ temp = avg_eff_area(sensitivity[1], sensitivity[0], extra_angle-10)
 plt.title('Rotation averaged sensitivity function')
 plt.ylabel(r'Area [cm$^2$]')
 plt.xlabel('Angle [°]')
-plt.plot(np.linspace(-95, 95, num = len(temp)), temp)
+plt.plot(np.linspace(-(extra_angle-10), (extra_angle-10), num = len(temp)), temp)
 plt.savefig('rotationavg.pdf')
 plt.show()
 
@@ -144,6 +146,7 @@ for i in range(1):
         
         #angle0 = spice.vsep(-velUlysses+dustVel, pointingDetector)
         #angle1 = spice.vsep(-velUlysses+dustVel, -pointingDetector)
+        
         
         angle0 = spice.vsep(-velUlysses+dustVel, posEarth-posUlysses)
         angle1 = spice.vsep(-velUlysses+dustVel, -posEarth+posUlysses)
