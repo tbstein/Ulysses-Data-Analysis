@@ -19,13 +19,13 @@ def avg_eff_area(eff_area: list, eff_area_angle: list, extra_angle: float) -> li
     two_pi = np.linspace(0, 2*np.pi, num = N) #Rotation angle
     #detector_earth_angles = np.linspace(0, 95, num = 95)
     #detector_earth_angles = np.concatenate((detector_earth_angles, np.flip(detector_earth_angles)))
-    detector_meteoroid_angles = np.linspace(0, extra_angle, num = extra_angle)
-    detector_meteoroid_angles = np.concatenate((detector_meteoroid_angles, np.flip(detector_meteoroid_angles)))
+    detector_meteoroid_angles = np.linspace(-85, 95, num = 181)
     for i, phi in enumerate(detector_meteoroid_angles):
         A = 0
         for n, theta in enumerate(two_pi):
-            dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
-            norm = np.sqrt(1+np.tan(extra_angle/180*np.pi)**2)
+            #dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
+            dot_product = np.sin((phi+85)/180*np.pi)*np.tan(85/180*np.pi)*np.cos(theta)+np.cos((phi+85)/180*np.pi)
+            norm = np.sqrt(1+np.tan(85/180*np.pi)**2)
             angle = np.arccos(dot_product/norm)/np.pi*180
             #index = find_nearest_idx(eff_area_angle, -2*detector_earth_angles[i]*np.cos(theta)+extra_angle+detector_earth_angles[i])
             index = find_nearest_idx(eff_area_angle, angle)
@@ -135,11 +135,12 @@ for i in boundaries:
     eff_area_array.append(eff_area)
 
 
+linestyle = ['dashed','solid','dotted']
 
-plt.xlabel('Time')
+plt.xlabel('Time [years]')
 plt.ylabel(r'Velocity corrected effective area [cm$^2$]')
 for i in range(len(boundaries)):
-    plt.plot(plttime, eff_area_array[i], label = str(boundaries[i])+'°')
+    plt.plot(plttime, eff_area_array[i], label = str(boundaries[i])+'°', ls = linestyle[i])
 plt.legend()
 plt.savefig('effareacompdegrees.pdf')
 plt.show()

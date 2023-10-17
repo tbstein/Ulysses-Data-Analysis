@@ -13,19 +13,20 @@ def uniform(angle: float, interval: tuple = (-30,30)) -> float:
     else:
         return 0
 
+
 def avg_eff_area(eff_area: list, eff_area_angle: list, extra_angle: float) -> list:
     avg = []
-    N = 360
+    N = 360*10
     two_pi = np.linspace(0, 2*np.pi, num = N) #Rotation angle
     #detector_earth_angles = np.linspace(0, 95, num = 95)
     #detector_earth_angles = np.concatenate((detector_earth_angles, np.flip(detector_earth_angles)))
-    detector_meteoroid_angles = np.linspace(0, extra_angle, num = extra_angle)
-    detector_meteoroid_angles = np.concatenate((detector_meteoroid_angles, np.flip(detector_meteoroid_angles)))
+    detector_meteoroid_angles = np.linspace(-85, 95, num = 181)
     for i, phi in enumerate(detector_meteoroid_angles):
         A = 0
         for n, theta in enumerate(two_pi):
-            dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
-            norm = np.sqrt(1+np.tan(extra_angle/180*np.pi)**2)
+            #dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
+            dot_product = np.sin((phi+85)/180*np.pi)*np.tan(85/180*np.pi)*np.cos(theta)+np.cos((phi+85)/180*np.pi)
+            norm = np.sqrt(1+np.tan(85/180*np.pi)**2)
             angle = np.arccos(dot_product/norm)/np.pi*180
             #index = find_nearest_idx(eff_area_angle, -2*detector_earth_angles[i]*np.cos(theta)+extra_angle+detector_earth_angles[i])
             index = find_nearest_idx(eff_area_angle, angle)
@@ -80,7 +81,7 @@ sensitivity = np.array([sensitivity_angle, sensitivity_value])
 
 
 plt.ylabel(r'Area [cm$^2$]')
-plt.xlabel('Angle [°]')
+plt.xlabel('Angle between impactor and detector pointing [°]')
 plt.title('Sensitivity function')
 plt.plot(sensitivity[0,:], sensitivity[1,:])
 plt.savefig('sensitivity.pdf')
@@ -92,7 +93,7 @@ for angle in sensitivity[0]:
     uniformDist.append(uniform(angle, interval = (-24,24)))
 uniformDist = np.array(uniformDist)
 
-plt.xlabel("Angle [°]")
+plt.xlabel("Angle between impactor and detector pointing [°]")
 plt.ylabel("Normalized Value")
 plt.title("Uniform distribution")
 plt.plot(sensitivity[0], uniformDist)
@@ -102,8 +103,8 @@ plt.show()
 temp = avg_eff_area(sensitivity[1], sensitivity[0], extra_angle-10)
 plt.title('Rotation averaged sensitivity function')
 plt.ylabel(r'Area [cm$^2$]')
-plt.xlabel('Angle [°]')
-plt.plot(np.linspace(-(extra_angle-10), (extra_angle-10), num = len(temp)), temp)
+plt.xlabel('Angle between impactor and detector cone [°]')
+plt.plot(np.linspace(-85, 95, num = len(temp)), temp)
 plt.savefig('rotationavg.pdf')
 plt.show()
 
@@ -111,7 +112,7 @@ plt.show()
 convolution = np.convolve(uniformDist, temp)
 conv_plt_angle = np.linspace(-len(convolution)/2,len(convolution)/2,len(convolution))
 plt.ylabel(r'Area [cm$^2$]')
-plt.xlabel('Angle [°]')
+plt.xlabel('Angle between impactor and detector cone [°]')
 plt.title('Convolved sensitivity function')
 #plt.plot(conv_plt_angle+extra_angle, convolution)
 plt.plot(conv_plt_angle, convolution)
@@ -147,7 +148,7 @@ for i in range(1):
         #angle0 = spice.vsep(-velUlysses+dustVel, pointingDetector)
         #angle1 = spice.vsep(-velUlysses+dustVel, -pointingDetector)
         
-        
+        '''
         angle0 = spice.vsep(-velUlysses+dustVel, posEarth-posUlysses)
         angle1 = spice.vsep(-velUlysses+dustVel, -posEarth+posUlysses)
         angle1 = angle0
@@ -156,6 +157,8 @@ for i in range(1):
             angle.append(angle0)
         else:
             angle.append(angle1)
+        '''
+        angle.append(95/180*np.pi-spice.vsep(-velUlysses+dustVel, posEarth-posUlysses))
         
         #angle.append(-spice.vsep(-(velUlysses+dustVel), pointingDetector)+np.pi)
         
@@ -169,9 +172,9 @@ for i in range(1):
     
     
     #plt.title('Angle between Earth-Ulysses Position Vector and Sun-Ulysses Velocity Vector + ' + str(velocity_dust) + 'km/s from Sun direction')
-    plt.title('Angle between Ulysses rotation axis and beta meteoroid flux')
+    plt.title('Angle between Detector cone and beta meteoroid flux')
     plt.ylabel('Angle [°]')
-    plt.xlabel('Time')
+    plt.xlabel('Time [years]')
     plt.plot(plttime, pltangle)
     plt.savefig('angles.pdf')
     plt.show()
@@ -182,31 +185,16 @@ for i in range(1):
     
     eff_area = []
     for i in range(len(pltangle)):
-        #index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
-        #index = find_nearest_idx(conv_plt_angle, extra_angle-pltangle[i])
-        
-        
-        
-        index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
-        #index = find_nearest_idx(wehry_sensitivity[:,0], pltangle[i])
-        
-        
-        #index = find_nearest_idx(sensitivity[0,:], pltangle[i])
-        
-        
+        index = find_nearest_idx(conv_plt_angle, pltangle[i])
         
         eff_area.append(convolution[index])
-        #eff_area.append(wehry_sensitivity[index,1]*10000)
-        
-        
-        #eff_area.append(sensitivity[1,index])
     
     
     plt.title(str(velocity_dust) + 'km/s')
-    plt.xlabel('Time')
+    plt.xlabel('Time [years]')
     plt.ylabel(r'Effective area [cm$^2$]')
-    plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red')
-    plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue')
+    plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red', ls = 'solid')
+    plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue', ls = 'dashed')
     plt.legend()
     plt.savefig('raweffarea.pdf')
     plt.show()
@@ -216,10 +204,10 @@ for i in range(1):
 
 
     plt.title(str(velocity_dust) + 'km/s')
-    plt.xlabel('Time')
+    plt.xlabel('Time [years]')
     plt.ylabel(r'Velocity corrected effective area [cm$^2$]')
-    plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red')
-    plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue')
+    plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red', ls = 'solid')
+    plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue', ls = 'dashed')
     plt.legend()
     plt.savefig('correffarea30.pdf')
     plt.show()
@@ -234,7 +222,7 @@ for i in range(1):
 
     plt.title(str(velocity_dust) + 'km/s')
     plt.plot(plttime, factor)
-    plt.xlabel('Time')
+    plt.xlabel('Time [years]')
     plt.ylabel('Velocity factor')
     plt.savefig('factor.pdf')
     plt.show()
