@@ -13,19 +13,39 @@ def uniform(angle: float, interval: tuple = (-30,30)) -> float:
     else:
         return 0
 
-
+"""
 def avg_eff_area(eff_area: list, eff_area_angle: list, extra_angle: float) -> list:
     avg = []
     N = 360*10
     two_pi = np.linspace(0, 2*np.pi, num = N) #Rotation angle
-    #detector_earth_angles = np.linspace(0, 95, num = 95)
-    #detector_earth_angles = np.concatenate((detector_earth_angles, np.flip(detector_earth_angles)))
     detector_meteoroid_angles = np.linspace(-85, 95, num = 181)
     for i, phi in enumerate(detector_meteoroid_angles):
         A = 0
         for n, theta in enumerate(two_pi):
             #dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
             dot_product = np.sin((phi+85)/180*np.pi)*np.tan(85/180*np.pi)*np.cos(theta)+np.cos((phi+85)/180*np.pi)
+            norm = np.sqrt(1+np.tan(85/180*np.pi)**2)
+            angle = np.arccos(dot_product/norm)/np.pi*180
+            #index = find_nearest_idx(eff_area_angle, -2*detector_earth_angles[i]*np.cos(theta)+extra_angle+detector_earth_angles[i])
+            index = find_nearest_idx(eff_area_angle, angle)
+            #A += eff_area[index]/N*2*np.pi
+            A += eff_area[index]/N
+        avg.append(A)
+    avg = np.array(avg)
+    return avg
+"""
+
+
+def avg_eff_area(eff_area: list, eff_area_angle: list, extra_angle: float) -> list:
+    avg = []
+    N = 360*10
+    two_pi = np.linspace(0, 2*np.pi, num = N) #Rotation angle
+    detector_meteoroid_angles = np.linspace(-85, 95, num = 181)
+    for i, phi in enumerate(detector_meteoroid_angles):
+        A = 0
+        for n, theta in enumerate(two_pi):
+            #dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
+            dot_product = np.sin((phi+85)/180*np.pi)*np.tan(85/180*np.pi)*np.cos(theta)-np.cos((phi+85)/180*np.pi)
             norm = np.sqrt(1+np.tan(85/180*np.pi)**2)
             angle = np.arccos(dot_product/norm)/np.pi*180
             #index = find_nearest_idx(eff_area_angle, -2*detector_earth_angles[i]*np.cos(theta)+extra_angle+detector_earth_angles[i])
@@ -104,13 +124,15 @@ temp = avg_eff_area(sensitivity[1], sensitivity[0], extra_angle-10)
 plt.title('Rotation averaged sensitivity function')
 plt.ylabel(r'Area [cm$^2$]')
 plt.xlabel('Angle between impactor and detector cone [°]')
+#plt.plot(np.linspace(-85, 95, num = len(temp)), temp)
 plt.plot(np.linspace(-85, 95, num = len(temp)), temp)
 plt.savefig('rotationavg.pdf')
 plt.show()
 
 
-convolution = np.convolve(uniformDist, temp)
+convolution = np.convolve(temp, uniformDist, mode='same')
 conv_plt_angle = np.linspace(-len(convolution)/2,len(convolution)/2,len(convolution))
+conv_plt_angle = np.linspace(-85, 95, num = len(temp))
 plt.ylabel(r'Area [cm$^2$]')
 plt.xlabel('Angle between impactor and detector cone [°]')
 plt.title('Convolved sensitivity function')
@@ -158,9 +180,8 @@ for i in range(1):
         else:
             angle.append(angle1)
         '''
-        angle.append(95/180*np.pi-spice.vsep(-velUlysses+dustVel, posEarth-posUlysses))
-        
-        #angle.append(-spice.vsep(-(velUlysses+dustVel), pointingDetector)+np.pi)
+        #angle.append(95/180*np.pi-spice.vsep(-velUlysses+dustVel, posEarth-posUlysses))
+        angle.append(-85/180*np.pi+spice.vsep(velUlysses-dustVel, posEarth-posUlysses))
         
         
     factor = np.array(factor)
@@ -186,9 +207,9 @@ for i in range(1):
     eff_area = []
     for i in range(len(pltangle)):
         index = find_nearest_idx(conv_plt_angle, pltangle[i])
-        
         eff_area.append(convolution[index])
-    
+        #index = find_nearest_idx(np.linspace(-95, 85, num = len(temp)), pltangle[i])
+        #eff_area.append(temp[index])
     
     plt.title(str(velocity_dust) + 'km/s')
     plt.xlabel('Time [years]')
@@ -210,6 +231,27 @@ for i in range(1):
     plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'blue', ls = 'dashed')
     plt.legend()
     plt.savefig('correffarea30.pdf')
+    plt.show()
+    
+    strub = np.loadtxt('uly_beta_sensareaearly.txt', delimiter = ',')
+    
+    plt.title(str(velocity_dust) + 'km/s')
+    plt.xlabel('Time [years]')
+    plt.ylabel(r'Velocity corrected effective area [cm$^2$]')
+    plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red', ls = 'solid')
+    plt.plot(strub[:,0], strub[:,1], label = 'Strub', color = 'blue', ls = 'dashed')
+    plt.legend()
+    plt.savefig('VergleichPeterTobias.pdf')
+    plt.show()
+    
+    plt.title(str(velocity_dust) + 'km/s')
+    plt.xlabel('Time [years]')
+    plt.ylabel(r'Velocity corrected effective area [cm$^2$]')
+    plt.plot(plttime, eff_area, label = 'Own estimate', color = 'red', ls = 'solid')
+    plt.plot(strub[:,0], strub[:,1], label = 'Strub', color = 'blue', ls = 'dashed')
+    plt.plot(wehry[:,0], wehry[:,1]*10000, label = 'Wehry', color = 'green', ls = '-.')
+    plt.legend()
+    plt.savefig('VergleichWehry.pdf')
     plt.show()
     
     
