@@ -15,16 +15,14 @@ def uniform(angle: float, interval: tuple = (-30,30)) -> float:
 
 def avg_eff_area(eff_area: list, eff_area_angle: list, extra_angle: float) -> list:
     avg = []
-    N = 360
+    N = 360*10
     two_pi = np.linspace(0, 2*np.pi, num = N) #Rotation angle
-    #detector_earth_angles = np.linspace(0, 95, num = 95)
-    #detector_earth_angles = np.concatenate((detector_earth_angles, np.flip(detector_earth_angles)))
     detector_meteoroid_angles = np.linspace(-85, 95, num = 181)
     for i, phi in enumerate(detector_meteoroid_angles):
         A = 0
         for n, theta in enumerate(two_pi):
             #dot_product = np.cos(phi/180*np.pi)+np.sin(phi/180*np.pi)*np.tan(extra_angle/180*np.pi)*np.cos(theta)
-            dot_product = np.sin((phi+85)/180*np.pi)*np.tan(85/180*np.pi)*np.cos(theta)+np.cos((phi+85)/180*np.pi)
+            dot_product = np.sin((phi+85)/180*np.pi)*np.tan(85/180*np.pi)*np.cos(theta)-np.cos((phi+85)/180*np.pi)
             norm = np.sqrt(1+np.tan(85/180*np.pi)**2)
             angle = np.arccos(dot_product/norm)/np.pi*180
             #index = find_nearest_idx(eff_area_angle, -2*detector_earth_angles[i]*np.cos(theta)+extra_angle+detector_earth_angles[i])
@@ -89,8 +87,8 @@ for i in boundaries:
     temp = avg_eff_area(sensitivity[1], sensitivity[0], extra_angle-10)
     
     
-    convolution = np.convolve(uniformDist, temp)
-    conv_plt_angle = np.linspace(-len(convolution)/2,len(convolution)/2,len(convolution))
+    convolution = np.convolve(temp, uniformDist, mode='same')
+    conv_plt_angle = np.linspace(-85, 95, num = len(temp))
     
     wehry = np.loadtxt('DefaultDataset.csv', delimiter = ',')
     
@@ -109,9 +107,9 @@ for i in boundaries:
         pointingDetector = spice.latrec(1, lon[i]*2*np.pi/360, lat[i]*2*np.pi/360)
         factor.append(np.abs(np.linalg.norm(relVel)/np.linalg.norm(dustVel)))
         
-        angle0 = spice.vsep(-velUlysses+dustVel, posEarth-posUlysses)
+        angle0 = spice.vsep(velUlysses-dustVel, posEarth-posUlysses)
     
-        angle.append(angle0)
+        angle.append(-85/180*np.pi+angle0)
         
         
     factor = np.array(factor)
@@ -127,7 +125,7 @@ for i in boundaries:
     
     eff_area = []
     for i in range(len(pltangle)):
-        index = find_nearest_idx(conv_plt_angle+extra_angle, pltangle[i])
+        index = find_nearest_idx(conv_plt_angle, pltangle[i])
         
         eff_area.append(convolution[index])
     
